@@ -5,12 +5,15 @@ dotenv.config();
 
 const connectDb = async () => {
   try {
-    // Connect to the MongoDB database using the URI from the .env file
-    await mongoose.connect(process.env.DB);
+    await mongoose.connect(process.env.DB, {
+      maxPoolSize: 10,                    // Max concurrent connections
+      serverSelectionTimeoutMS: 5000,     // Fail fast if DB is unreachable
+      socketTimeoutMS: 45000,             // Close sockets after 45s inactivity
+    });
     console.log("Database connected successfully");
   } catch (error) {
     console.error("Database connection failed:", error.message);
-    process.exit(1); // Exit the process on failure
+    process.exit(1);
   }
 };
 

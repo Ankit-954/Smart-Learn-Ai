@@ -1,15 +1,21 @@
 .course-card {
-  background-color: #fff;
-  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
   padding: 20px;
-  border-radius: 10px;
+  border-radius: 14px;
   text-align: center;
   width: min(100%, 270px);
-  transition: 0.5s;
   position: relative;
+  overflow: visible;
+  z-index: 1;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transform-style: preserve-3d;
+  perspective: 800px;
 
   &:hover {
-    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.4);
+    transform: translateY(-6px) rotateX(1deg);
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
   }
 
   .course-image {
@@ -18,17 +24,34 @@
     display: block;
     object-fit: cover;
     object-position: center;
-    background: #f1f5f9;
+    background: var(--surface-hover);
     border-radius: 10px;
     margin-bottom: 10px;
+    transition: transform 0.3s ease;
+  }
+
+  &:hover .course-image {
+    transform: scale(1.03);
   }
 
   .top-course-badge {
     position: absolute;
     top: 10px;
     right: 10px;
-    background: #0f766e;
-    color: #ecfeff;
+    background: var(--success);
+    color: #ffffff;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .free-course-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: var(--accent);
+    color: #ffffff;
     padding: 4px 8px;
     border-radius: 999px;
     font-size: 11px;
@@ -37,13 +60,13 @@
 
   h3 {
     font-size: 18px;
-    color: #333;
+    color: var(--text);
     margin-bottom: 10px;
   }
 
   p {
     font-size: 14px;
-    color: #666;
+    color: var(--muted);
     margin-bottom: 5px;
   }
 
@@ -56,8 +79,8 @@
     span {
       font-size: 11px;
       font-weight: 700;
-      background: #e2e8f0;
-      color: #1e3a8a;
+      background: var(--primary-light);
+      color: var(--primary);
       border-radius: 999px;
       padding: 4px 8px;
     }
@@ -72,39 +95,100 @@
 
     span {
       font-size: 11px;
-      color: #0f766e;
-      background: #ccfbf1;
+      color: var(--success);
+      background: var(--accent-light);
       border-radius: 999px;
       padding: 3px 8px;
-      border: 1px solid #99f6e4;
+      border: 1px solid var(--border);
     }
   }
 
   .admin-course-actions {
-    margin-top: 10px;
+    margin-top: 12px;
     display: grid;
-    gap: 8px;
+    gap: 10px;
+    position: relative;
+    z-index: 2;
   }
 
-  .top-course-priority {
+  .admin-course-action-row {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .admin-actions-toggle {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 11px;
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 700;
+    font-size: 0.92rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+  }
+
+  .admin-actions-toggle:hover {
+    border-color: var(--border-hover);
+    background: var(--surface-hover);
+  }
+
+  .admin-actions-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--shadow-md);
+    padding: 6px;
+    z-index: 30;
+  }
+
+  .admin-action-item {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--text);
     text-align: left;
-
-    label {
-      display: block;
-      font-size: 11px;
-      color: #475569;
-      margin-bottom: 4px;
-      font-weight: 700;
-    }
-
-    input {
-      width: 100%;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      padding: 7px 9px;
-      font-size: 13px;
-    }
+    font-size: 0.86rem;
+    font-weight: 600;
+    padding: 8px 9px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
+
+  .admin-action-item + .admin-action-item {
+    margin-top: 2px;
+  }
+
+  .admin-action-item:hover {
+    background: var(--surface-hover);
+  }
+
+  .admin-action-item:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .admin-action-item-danger {
+    color: var(--danger);
+  }
+
+  .admin-action-item-danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+  }
+}
+
+.course-card.actions-open {
+  z-index: 60;
 }
 
 @media (max-width: 520px) {

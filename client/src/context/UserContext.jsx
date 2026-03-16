@@ -33,6 +33,27 @@ export const UserContextProvider = ({ children }) => {
     }
   }
 
+  async function googleLogin(tokenId, navigate, fetchMyCourse) {
+    setBtnLoading(true);
+    try {
+      const { data } = await axios.post(`${server}/api/user/google`, {
+        tokenId,
+      });
+
+      toast.success(data.message);
+      localStorage.setItem("token", data.token);
+      setUser(data.user);
+      setIsAuth(true);
+      setBtnLoading(false);
+      navigate("/");
+      if (fetchMyCourse) fetchMyCourse();
+    } catch (error) {
+      setBtnLoading(false);
+      setIsAuth(false);
+      toast.error(error.response?.data?.message || "Google Sign-In failed");
+    }
+  }
+
   async function registerUser(name, email, password, navigate) {
     setBtnLoading(true);
     try {
@@ -111,6 +132,7 @@ export const UserContextProvider = ({ children }) => {
         setIsAuth,
         isAuth,
         loginUser,
+        googleLogin,
         btnLoading,
         loading,
         registerUser,

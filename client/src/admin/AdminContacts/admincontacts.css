@@ -1,0 +1,343 @@
+.admin-contacts {
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-md);
+  padding: 16px;
+  backdrop-filter: blur(8px);
+}
+
+.admin-contacts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-contacts-header h1 {
+  margin: 0;
+  font-size: clamp(1.3rem, 2.8vw, 1.9rem);
+  color: var(--text);
+}
+
+.admin-contacts-header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.admin-contacts-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.admin-contacts-toolbar {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.admin-contacts-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  padding: 8px 12px;
+  border-radius: 10px;
+  flex: 1;
+  min-width: 240px;
+}
+
+.admin-contacts-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  color: var(--text);
+}
+
+.admin-contacts-toolbar select {
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: var(--input-bg);
+  color: var(--text);
+}
+
+.admin-refresh-btn {
+  padding: 8px 14px;
+  font-size: 0.9rem;
+}
+
+.admin-contacts-table-wrap {
+  margin-top: 14px;
+  overflow-x: auto;
+}
+
+.admin-contacts table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+  background: var(--surface);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.admin-contacts thead {
+  background: linear-gradient(120deg, var(--primary) 0%, var(--accent) 100%);
+  color: #ffffff;
+}
+
+.admin-contacts th,
+.admin-contacts td {
+  padding: 11px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.92rem;
+  color: var(--text);
+  vertical-align: top;
+}
+
+.admin-contacts tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.admin-contact-from {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-contact-from span {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  border: 1px solid transparent;
+}
+
+.status-unread {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.status-read {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.status-replied {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.admin-actions-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+  position: relative;
+}
+
+.admin-actions-menu {
+  position: relative;
+  display: inline-flex;
+  justify-content: flex-end;
+}
+
+.admin-kebab-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.admin-kebab-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--border-hover);
+}
+
+.admin-kebab-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.admin-actions-dropdown {
+  position: fixed;
+  width: 200px;
+  z-index: 1200;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: var(--shadow-md);
+}
+
+.admin-actions-item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+}
+
+.admin-actions-item + .admin-actions-item {
+  margin-top: 2px;
+}
+
+.admin-actions-item:hover {
+  background: var(--surface-hover);
+}
+
+.admin-actions-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-actions-item-danger {
+  color: #ef4444;
+}
+
+.admin-actions-item-danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.admin-contacts .outline-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.admin-contacts .outline-btn:hover {
+  background: var(--surface-hover);
+}
+
+.admin-empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 20px;
+}
+
+.admin-reply-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.admin-reply-modal {
+  width: min(560px, 92%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow-lg);
+}
+
+.admin-reply-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+
+.admin-reply-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.admin-reply-header p {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.admin-reply-close {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.admin-reply-body {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-reply-body label {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.admin-reply-body input,
+.admin-reply-body textarea {
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 0.92rem;
+  outline: none;
+}
+
+.admin-reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+@media (max-width: 900px) {
+  .admin-contacts {
+    padding: 12px;
+  }
+  .admin-contacts table {
+    min-width: 720px;
+  }
+}

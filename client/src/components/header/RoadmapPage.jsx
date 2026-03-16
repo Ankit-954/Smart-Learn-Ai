@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-import html2pdf from "html2pdf.js";
+import { FaChevronDown, FaChevronUp, FaBookOpen, FaCode, FaExclamationTriangle, FaCheckCircle } from "react-icons/fa";
 import "./roadmap.css";
 import { server } from "../../main";
 import CourseCard from "../coursecard/CourseCard";
@@ -27,6 +27,7 @@ const RoadmapPage = () => {
   const [loadError, setLoadError] = useState("");
   const [roadmap, setRoadmap] = useState(null);
   const [recommendedCourses, setRecommendedCourses] = useState([]);
+  const [expandedPhase, setExpandedPhase] = useState(0); // Accordion state
 
   const topic = useMemo(() => decodeURIComponent(roadmapName || "").trim(), [roadmapName]);
 
@@ -64,18 +65,6 @@ const RoadmapPage = () => {
     };
   }, [topic]);
 
-  const downloadPDF = () => {
-    const element = document.getElementById("roadmap-content");
-    const options = {
-      margin: 10,
-      filename: `${(roadmap?.topic || topic || "roadmap").replace(/\s+/g, "-")}.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    };
-    html2pdf(element, options);
-  };
-
   return (
     <div className="roadmap-page">
       <div className="roadmap-hero">
@@ -86,9 +75,6 @@ const RoadmapPage = () => {
         </p>
         <div className="roadmap-hero-meta">
           <span>Total Duration: {roadmap?.totalDurationWeeks || 0} weeks</span>
-          <button className="download-btn" onClick={downloadPDF} disabled={!roadmap}>
-            Download PDF
-          </button>
         </div>
       </div>
 
@@ -112,90 +98,126 @@ const RoadmapPage = () => {
             </article>
           </section>
 
-          <section className="roadmap-section">
-            <h3>Learning Phases (Week-wise)</h3>
-            <div className="roadmap-phases">
-              {(roadmap.phases || []).map((phase, idx) => (
-                <article key={`${phase.title}-${idx}`} className="roadmap-phase-card">
-                  <div className="phase-top">
-                    <h4>
-                      {idx + 1}. {phase.title}
-                    </h4>
-                    <span>
-                      Week {phase.weekStart || 1}-{phase.weekEnd || phase.durationWeeks || 1}
-                    </span>
-                  </div>
-                  {phase.focus && <p className="phase-focus">{phase.focus}</p>}
+          <section className="roadmap-timeline-section">
+            <h3>Learning Curriculum (Week-wise)</h3>
+            <div className="roadmap-timeline">
+              {(roadmap.phases || []).map((phase, idx) => {
+                const isExpanded = expandedPhase === idx;
 
-                  {(phase.goals || []).length > 0 && (
-                    <div className="phase-block">
-                      <h5>Goals</h5>
-                      <div className="phase-chip-list">
-                        {(phase.goals || []).map((x, i) => (
-                          <span key={`g-${i}`}>{renderSafeText(x)}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                return (
+                  <article 
+                    key={`${phase.title}-${idx}`} 
+                    className={`timeline-node ${isExpanded ? "expanded" : ""}`}
+                  >
+                    {/* The glowing circle on the left timeline line */}
+                    <div className="timeline-marker">{idx + 1}</div>
 
-                  {(phase.skills || []).length > 0 && (
-                    <div className="phase-block">
-                      <h5>Skills</h5>
-                      <div className="phase-chip-list">
-                        {(phase.skills || []).map((x, i) => (
-                          <span key={`s-${i}`}>{renderSafeText(x)}</span>
-                        ))}
+                    <div className="timeline-content">
+                      {/* Accordion Header */}
+                      <div 
+                        className="timeline-header" 
+                        onClick={() => setExpandedPhase(isExpanded ? null : idx)}
+                      >
+                        <div className="timeline-header-info">
+                          <h4>{phase.title}</h4>
+                          <span className="timeline-week-pill">
+                            Week {phase.weekStart || 1}-{phase.weekEnd || phase.durationWeeks || 1}
+                          </span>
+                        </div>
+                        <button className="accordion-btn">
+                          {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+                        </button>
                       </div>
-                    </div>
-                  )}
 
-                  {(phase.outcomes || []).length > 0 && (
-                    <div className="phase-block">
-                      <h5>Outcomes</h5>
-                      <div className="phase-chip-list phase-chip-list-accent">
-                        {(phase.outcomes || []).map((x, i) => (
-                          <span key={`o-${i}`}>{renderSafeText(x)}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                      {/* Accordion Body (Deep Context) */}
+                      {isExpanded && (
+                        <div className="timeline-body transition-reveal">
+                          {phase.phaseDescription && (
+                            <p className="phase-description">{phase.phaseDescription}</p>
+                          )}
 
-                  {(phase.projects || []).length > 0 && (
-                    <div className="phase-block">
-                      <h5>Projects</h5>
-                      <div className="phase-project-list">
-                        {(phase.projects || []).map((x, i) => (
-                          <div key={`p-${i}`} className="phase-project-item">
-                            {renderSafeText(x)}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                          {/* Deep Topics */}
+                          {(phase.topics || []).length > 0 && (
+                            <div className="phase-struct-block">
+                              <h5><FaBookOpen className="icon-blue" /> Core Topics</h5>
+                              <ul className="struct-list">
+                                {phase.topics.map((t, i) => {
+                                  if (typeof t === "string") return <li key={`t-${i}`}><p>{t}</p></li>;
+                                  return (
+                                    <li key={`t-${i}`}>
+                                      <strong>{t.name}</strong> 
+                                      {t.importance && <span className="importance-badge">{t.importance}</span>}
+                                      {t.details && <p>{t.details}</p>}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          )}
 
-                  {(phase.resources || []).length > 0 && (
-                    <div className="phase-block">
-                      <h5>Resources</h5>
-                      <div className="phase-chip-list">
-                        {(phase.resources || []).map((x, i) => (
-                          <span key={`r-${i}`}>{renderSafeText(x)}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                          {/* Hands-on Projects */}
+                          {(phase.projects || []).length > 0 && (
+                            <div className="phase-struct-block">
+                              <h5><FaCode className="icon-purple" /> Hands-on Projects</h5>
+                              <div className="project-grid">
+                                {phase.projects.map((p, i) => {
+                                  if (typeof p === "string") {
+                                    return (
+                                      <div className="advanced-project-card" key={`p-${i}`}>
+                                        <h6>Project {i + 1}</h6>
+                                        <p>{p}</p>
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <div className="advanced-project-card" key={`p-${i}`}>
+                                      {p.name && <h6>{p.name}</h6>}
+                                      {p.explanation && <p>{p.explanation}</p>}
+                                      {(p.techStack && p.techStack.length > 0) && (
+                                        <div className="tech-stack-row">
+                                          {p.techStack.map((tech, ti) => (
+                                            <span key={`tech-${ti}`}>{tech}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
 
-                  {(phase.checkpoints || []).length > 0 && (
-                    <div className="phase-block">
-                      <h5>Checkpoints</h5>
-                      <div className="phase-chip-list">
-                        {(phase.checkpoints || []).map((x, i) => (
-                          <span key={`c-${i}`}>{renderSafeText(x)}</span>
-                        ))}
-                      </div>
+                          {/* Common Pitfalls */}
+                          {(phase.commonPitfalls || []).length > 0 && (
+                            <div className="phase-struct-block">
+                              <h5><FaExclamationTriangle className="icon-orange" /> Common Pitfalls</h5>
+                              <ul className="pitfall-list">
+                                {phase.commonPitfalls.map((pitfall, i) => (
+                                  <li key={`pit-${i}`}>{typeof pitfall === 'string' ? pitfall : renderSafeText(pitfall)}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Checkpoints */}
+                          {(phase.checkpoints || []).length > 0 && (
+                            <div className="phase-struct-block">
+                              <h5><FaCheckCircle className="icon-green" /> Validation Checkpoints</h5>
+                              <div className="checkpoint-chips">
+                                {phase.checkpoints.map((cp, i) => (
+                                  <span key={`cp-${i}`} className="checkpoint-chip">
+                                    {typeof cp === 'string' ? cp : renderSafeText(cp)}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           </section>
 

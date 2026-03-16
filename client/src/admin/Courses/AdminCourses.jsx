@@ -26,6 +26,11 @@ const streams = [
 ];
 
 const levels = ["All Levels", "Beginner", "Intermediate", "Advanced", "Beginner to Advanced"];
+const durationUnits = [
+  { value: "day", label: "Day(s)" },
+  { value: "week", label: "Week(s)" },
+  { value: "month", label: "Month(s)" },
+];
 
 const AdminCourses = ({ user }) => {
   const navigate = useNavigate();
@@ -41,11 +46,14 @@ const AdminCourses = ({ user }) => {
   const [isTopCourse, setIsTopCourse] = useState(false);
   const [topPriority, setTopPriority] = useState(0);
   const [price, setPrice] = useState("");
+  const [isFree, setIsFree] = useState(false);
   const [createdBy, setCreatedBy] = useState("");
   const [duration, setDuration] = useState("");
+  const [durationUnit, setDurationUnit] = useState("week");
   const [image, setImage] = useState("");
   const [imagePrev, setImagePrev] = useState("");
   const [btnLoading, setBtnLoading] = useState(false);
+  const [editingCourseId, setEditingCourseId] = useState(null);
 
   const changeImageHandler = (e) => {
     const file = e.target.files[0];
@@ -73,6 +81,46 @@ const AdminCourses = ({ user }) => {
 
   const { courses, fetchCourses } = CourseData();
 
+  const resetForm = () => {
+    setImage("");
+    setTitle("");
+    setDescription("");
+    setDuration("");
+    setDurationUnit("week");
+    setImagePrev("");
+    setCreatedBy("");
+    setPrice("");
+    setIsFree(false);
+    setCategory("");
+    setStream("");
+    setLevel("All Levels");
+    setSubjects("");
+    setIsTopCourse(false);
+    setTopPriority(0);
+    setEditingCourseId(null);
+  };
+
+  const startEditCourse = (course) => {
+    if (!course) return;
+    setEditingCourseId(course._id);
+    setTitle(course.title || "");
+    setDescription(course.description || "");
+    setCategory(course.category || "");
+    setStream(course.stream || "");
+    setLevel(course.level || "All Levels");
+    setSubjects(Array.isArray(course.subjects) ? course.subjects.join(", ") : "");
+    setIsTopCourse(Boolean(course.isTopCourse));
+    setTopPriority(course.topPriority || 0);
+    const freeFlag = course.isFree || Number(course.price) <= 0;
+    setIsFree(freeFlag);
+    setPrice(freeFlag ? "0" : String(course.price ?? ""));
+    setCreatedBy(course.createdBy || "");
+    setDuration(course.duration || "");
+    setDurationUnit(course.durationUnit || "week");
+    setImage("");
+    setImagePrev(course.image ? `${server}/${course.image}` : "");
+  };
+
   const submitHandler = async (e) => {
     e.preventDefault();
     setBtnLoading(true);
@@ -88,12 +136,20 @@ const AdminCourses = ({ user }) => {
     myForm.append("isTopCourse", String(isTopCourse));
     myForm.append("topPriority", String(topPriority || 0));
     myForm.append("price", price);
+    myForm.append("isFree", String(isFree));
     myForm.append("createdBy", createdBy);
     myForm.append("duration", duration);
-    myForm.append("file", image);
+    myForm.append("durationUnit", durationUnit);
+    if (image) {
+      myForm.append("file", image);
+    }
 
     try {
-      const { data } = await axios.post(`${server}/api/course/new`, myForm, {
+      const endpoint = editingCourseId
+        ? `${server}/api/course/${editingCourseId}`
+        : `${server}/api/course/new`;
+      const method = editingCourseId ? "put" : "post";
+      const { data } = await axios[method](endpoint, myForm, {
         headers: {
           token: localStorage.getItem("token"),
         },
@@ -102,21 +158,10 @@ const AdminCourses = ({ user }) => {
       toast.success(data.message);
       setBtnLoading(false);
       await fetchCourses();
-      setImage("");
-      setTitle("");
-      setDescription("");
-      setDuration("");
-      setImagePrev("");
-      setCreatedBy("");
-      setPrice("");
-      setCategory("");
-      setStream("");
-      setLevel("All Levels");
-      setSubjects("");
-      setIsTopCourse(false);
-      setTopPriority(0);
+      resetForm();
     } catch (error) {
       toast.error(error.response.data.message);
+      setBtnLoading(false);
     }
   };
 
@@ -131,7 +176,7 @@ const AdminCourses = ({ user }) => {
           <div className="dashboard-content admin-course-grid">
             {courses && courses.length > 0 ? (
               courses.map((e) => {
-                return <CourseCard key={e._id} course={e} />;
+                return <CourseCard key={e._id} course={e} onEdit={startEditCourse} />;
               })
             ) : (
               <p className="admin-empty-state">No Courses Yet</p>
@@ -142,7 +187,7 @@ const AdminCourses = ({ user }) => {
         <div className="right admin-courses-form-panel">
           <div className="add-course">
             <div className="course-form">
-              <h2>Add Course</h2>
+              <h2>{editingCourseId ? "Edit Course" : "Add Course"}</h2>
               <form onSubmit={submitHandler}>
                 <label htmlFor="text">Title</label>
                 <input
@@ -160,12 +205,26 @@ const AdminCourses = ({ user }) => {
                   required
                 />
 
+                <label htmlFor="text">Pricing Type</label>
+                <select
+                  value={isFree ? "free" : "paid"}
+                  onChange={(e) => {
+                    const nextIsFree = e.target.value === "free";
+                    setIsFree(nextIsFree);
+                    setPrice(nextIsFree ? "0" : "");
+                  }}
+                >
+                  <option value="paid">Paid</option>
+                  <option value="free">Free</option>
+                </select>
+
                 <label htmlFor="text">Price</label>
                 <input
                   type="number"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  required
+                  required={!isFree}
+                  disabled={isFree}
                 />
 
                 <label htmlFor="text">createdBy</label>
@@ -237,12 +296,26 @@ const AdminCourses = ({ user }) => {
                 />
 
                 <label htmlFor="text">Duration</label>
-                <input
-                  type="number"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value)}
-                  required
-                />
+                <div className="admin-duration-row">
+                  <input
+                    type="number"
+                    min="1"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    required
+                  />
+                  <select
+                    value={durationUnit}
+                    onChange={(e) => setDurationUnit(e.target.value)}
+                    required
+                  >
+                    {durationUnits.map((unit) => (
+                      <option key={unit.value} value={unit.value}>
+                        {unit.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 <label htmlFor="course-cover">Course Cover Image (optional)</label>
                 <input
@@ -254,13 +327,25 @@ const AdminCourses = ({ user }) => {
                 <small>Allowed: jpg, png, webp. If skipped, default cover is generated.</small>
                 {imagePrev && <img src={imagePrev} alt="" width={300} />}
 
-                <button
-                  type="submit"
-                  disabled={btnLoading}
-                  className="common-btn"
-                >
-                  {btnLoading ? "Please Wait..." : "Add"}
-                </button>
+                <div className="admin-course-form-actions">
+                  <button
+                    type="submit"
+                    disabled={btnLoading}
+                    className="common-btn"
+                  >
+                    {btnLoading ? "Please Wait..." : editingCourseId ? "Update" : "Add"}
+                  </button>
+                  {editingCourseId && (
+                    <button
+                      type="button"
+                      className="common-btn"
+                      style={{ background: "#475569" }}
+                      onClick={resetForm}
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           </div>

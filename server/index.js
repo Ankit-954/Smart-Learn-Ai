@@ -1,14 +1,17 @@
 import express from "express";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import compression from "compression";
 import { connectDb } from "./database/db.js";
 import Razorpay from "razorpay";
 import cors from "cors";
-import rateLimit from "express-rate-limit";
-import axios from "axios"; // Import axios for making HTTP requests to OpenAI
+import axios from "axios";
+import { initCronJobs } from "./cron/jobs.js";
+import { globalLimiter, aiLimiter } from "./middlewares/rateLimiter.js";
 
 dotenv.config();
 
-const REQUIRED_ENV_VARS = ["GROQ_API_KEY", "Razorpay_Key", "Razorpay_Secret"];
+const REQUIRED_ENV_VARS = ["GROQ_API_KEY", "GEMINI_API_KEY", "Razorpay_Key", "Razorpay_Secret"];
 const missingEnvVars = REQUIRED_ENV_VARS.filter((name) => !process.env[name]);
 if (missingEnvVars.length > 0) {
   throw new Error(`Missing required env vars: ${missingEnvVars.join(", ")}`);
@@ -29,17 +32,24 @@ const app = express();
 import { razorpayWebhook } from "./controllers/course.js";
 app.post("/api/razorpay/webhook", express.raw({ type: "application/json" }), razorpayWebhook);
 
-// CORS configuration
+// CORS configuration — reads from env for production, falls back to localhost for dev
 const corsOptions = {
-  origin: "http://localhost:5173",
+  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization", "token"],
 };
 
-// Middleware
-app.use(express.json());
+// Middleware — security + performance
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));                                   // Security headers
+app.use(compression());                              // Gzip compression
+app.use(express.json({ limit: "5mb" }));              // JSON body with size limit
 app.use(cors(corsOptions));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+
+// ─── Rate Limiting ──────────────────────────────────────────────
+app.use(globalLimiter);
 
 // AI request cache and request-dedupe store
 const cache = new Map();
@@ -96,17 +106,10 @@ const testDomains = [
 
 const RETRYABLE_OPENAI_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
 const GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GEMINI_CHAT_COMPLETIONS_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const VALID_DIFFICULTIES = new Set(["easy", "medium", "hard"]);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const aiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many AI requests. Try again in a minute." },
-});
 
 const logEvent = (level, event, meta = {}) => {
   const line = JSON.stringify({
@@ -152,16 +155,12 @@ Do not add comments or markdown.
 Invalid JSON:
 ${invalidJSON}`;
 
-  const response = await requestGroqWithRetry(
+  const response = await requestAIWithRetry(
     {
       model,
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 1200,
+      max_tokens: 4000,
       temperature: 0,
-    },
-    {
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-      "Content-Type": "application/json",
     },
     1,
     700
@@ -186,11 +185,15 @@ async function parseJSONArrayOrRepair(raw) {
 
 async function parseJSONObjectOrRepair(raw) {
   const candidate = extractJSONObjectString(raw);
-  if (!candidate) throw new Error("AI response does not contain a JSON object");
+  if (!candidate) {
+    console.error("AI response does not contain JSON object. Truncated Raw:", raw.slice(-100));
+    throw new Error("AI response does not contain a JSON object");
+  }
 
   try {
     return JSON.parse(candidate);
   } catch (error) {
+    console.warn("Initial JSON parse failed, repairing. Candidate:", candidate);
     const repaired = await repairJSONWithGroq(candidate, "object");
     const repairedCandidate = extractJSONObjectString(repaired);
     if (!repairedCandidate) throw new Error("Failed to repair AI JSON object");
@@ -204,29 +207,75 @@ function isRetryableOpenAIError(error) {
   return !status || RETRYABLE_OPENAI_STATUS.has(status);
 }
 
-async function requestGroqWithRetry(body, headers, maxRetries = 3, baseDelayMs = 1000) {
+async function requestAIWithRetry(body, maxRetries = 3, baseDelayMs = 1000) {
   let lastError;
 
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-    try {
-      return await axios.post(GROQ_CHAT_COMPLETIONS_URL, body, { headers });
-    } catch (error) {
-      lastError = error;
-      if (!isRetryableOpenAIError(error) || attempt === maxRetries) {
-        throw error;
+    // Randomize primary provider for this attempt
+    const useGemini = Math.random() > 0.5;
+    const primaryConf = useGemini ? {
+      url: GEMINI_CHAT_COMPLETIONS_URL,
+      key: process.env.GEMINI_API_KEY,
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      name: "Gemini",
+    } : {
+      url: GROQ_CHAT_COMPLETIONS_URL,
+      key: process.env.GROQ_API_KEY,
+      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+      name: "Groq",
+    };
+    
+    // Fallback provider
+    const secondaryConf = useGemini ? {
+      url: GROQ_CHAT_COMPLETIONS_URL,
+      key: process.env.GROQ_API_KEY,
+      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+      name: "Groq",
+    } : {
+      url: GEMINI_CHAT_COMPLETIONS_URL,
+      key: process.env.GEMINI_API_KEY,
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      name: "Gemini",
+    };
+
+    const attemptConfigs = [primaryConf, secondaryConf];
+    let requestFailed = true;
+
+    for (const conf of attemptConfigs) {
+      if (!conf.key) continue; // Skip if env key is missing for some reason
+      
+      try {
+        const payload = { ...body, model: conf.model }; // override model
+        const headers = {
+          Authorization: `Bearer ${conf.key}`,
+          "Content-Type": "application/json",
+        };
+        const response = await axios.post(conf.url, payload, { headers, timeout: 25000 });
+        return response; // Success, immediately exit
+      } catch (error) {
+        lastError = error;
+        console.warn(`${conf.name} API failed on try ${attempt + 1}: ${error.response?.status || error.message}`);
+        
+        // If it's a structural error (like 400 Bad Request) do not fallback to the other provider, throw immediately
+        if (error.response?.status === 400) {
+          throw error;
+        }
       }
-
-      const retryAfterHeader = Number(error.response?.headers?.["retry-after"]);
-      const retryAfterMs =
-        Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
-          ? retryAfterHeader * 1000
-          : baseDelayMs * 2 ** attempt;
-
-      console.warn(
-        `Groq request retry ${attempt + 1}/${maxRetries} in ${retryAfterMs}ms (status: ${error.response?.status || "network"})`
-      );
-      await sleep(retryAfterMs);
     }
+
+    // Both providers failed or structural issue, calculate delay and retry
+    if (!isRetryableOpenAIError(lastError) || attempt === maxRetries) {
+      throw lastError;
+    }
+
+    const retryAfterHeader = Number(lastError?.response?.headers?.["retry-after"]);
+    const retryAfterMs =
+      Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+        ? retryAfterHeader * 1000
+        : baseDelayMs * 2 ** attempt;
+
+    console.warn(`AI request retry ${attempt + 1}/${maxRetries} in ${retryAfterMs}ms`);
+    await sleep(retryAfterMs);
   }
 
   throw lastError;
@@ -348,29 +397,41 @@ app.post("/api/generate-questions", aiLimiter, async (req, res) => {
         throw new Error("GROQ_API_KEY is not configured");
       }
 
-      const model = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
-      const groqResponse = await requestGroqWithRetry(
+      const model = "llama-3.1-8b-instant"; // The load balancer overrides this
+      const groqResponse = await requestAIWithRetry(
         {
           model,
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 1000,
+          max_tokens: 4000,
           response_format: { type: "json_object" },
-        },
-        {
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json",
         },
         3,
         1000
       );
 
       const rawContent = groqResponse.data.choices?.[0]?.message?.content || "{}";
-      const parsedObject = await parseJSONObjectOrRepair(rawContent);
-      const parsedArray = Array.isArray(parsedObject?.questions)
-        ? parsedObject.questions
-        : Array.isArray(parsedObject)
-          ? parsedObject
-          : [];
+      const finishReason = groqResponse.data.choices?.[0]?.finish_reason || "unknown";
+      if (finishReason !== "stop") {
+        console.warn(`AI warning: LLM finished with reason: ${finishReason}`);
+      }
+      
+      let parsedArray = [];
+      try {
+        const parsedObject = await parseJSONObjectOrRepair(rawContent);
+        parsedArray = Array.isArray(parsedObject?.questions)
+          ? parsedObject.questions
+          : Array.isArray(parsedObject)
+            ? parsedObject
+            : [];
+      } catch (err) {
+        console.warn("Falling back to array parsing for response");
+        try {
+          parsedArray = await parseJSONArrayOrRepair(rawContent);
+        } catch (err2) {
+          throw err;
+        }
+      }
+      
       const questions = normalizeQuestionPayload(parsedArray, difficulty);
 
       if (!Array.isArray(questions) || !questions[0]?.question) {
@@ -444,7 +505,7 @@ app.post("/api/analyze-test-performance", aiLimiter, async (req, res) => {
       throw new Error("GROQ_API_KEY is not configured");
     }
 
-    const model = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+    const model = "llama-3.1-8b-instant";
     const prompt = `Analyze this test performance and provide concise learning feedback.
 Domain: ${domain}
 Score: ${score}/${totalQuestions}
@@ -457,17 +518,13 @@ Respond as JSON only:
   "practicePlan": "2-3 sentence practical plan"
 }`;
 
-    const aiResponse = await requestGroqWithRetry(
+    const aiResponse = await requestAIWithRetry(
       {
         model,
         messages: [{ role: "user", content: prompt }],
         max_tokens: 500,
         temperature: 0.3,
         response_format: { type: "json_object" },
-      },
-      {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-        "Content-Type": "application/json",
       },
       2,
       800
@@ -512,16 +569,52 @@ import userRoutes from "./routes/user.js";
 import courseRoutes from "./routes/course.js";
 import adminRoutes from "./routes/admin.js";
 import reviewRoutes from "./routes/review.js";
+import publicRoutes from "./routes/public.js";
 
 // Apply routes
 app.use("/api", userRoutes);
 app.use("/api", courseRoutes);
 app.use("/api", adminRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/public", publicRoutes);
 
-// Start Server
+// ─── Global Error Handler ───────────────────────────────────────
+// Catches unhandled errors from any route and sends a safe response
+app.use((err, _req, res, _next) => {
+  const status = err.status || err.statusCode || 500;
+  logEvent("error", "unhandled_error", { message: err.message, stack: err.stack?.split("\n")[0] });
+  res.status(status).json({
+    message: process.env.NODE_ENV === "production"
+      ? "Something went wrong. Please try again later."
+      : err.message || "Internal server error",
+  });
+});
+
+// ─── Start Server (DB first, then listen) ───────────────────────
 const port = process.env.PORT || 5000;
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
-  connectDb();
+
+const startServer = async () => {
+  await connectDb();  // Connect DB BEFORE accepting requests
+  initCronJobs({ cache, inflight });  // Start scheduled tasks
+  const server = app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+  });
+
+  // Graceful shutdown — close connections cleanly on SIGTERM/SIGINT
+  const shutdown = (signal) => {
+    console.log(`\n${signal} received. Shutting down gracefully...`);
+    server.close(() => {
+      console.log("HTTP server closed.");
+      process.exit(0);
+    });
+    // Force exit if shutdown takes too long
+    setTimeout(() => { console.error("Forced shutdown."); process.exit(1); }, 10000);
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+};
+
+startServer().catch((err) => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
 });

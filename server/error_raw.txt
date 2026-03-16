@@ -1,0 +1,11 @@
+{
+  "questions": [
+    {
+      "question": "Considering the Node.js event loop phases, which statement accurately{
+  "questions": [
+    {
+      "question": "Consider a Node.js process executing `fs.readFile()` and `setImmediate()` within the same `setTimeout(..., 0)` callback, followed by a `process.nextTick()`. What is the guaranteed execution order of their respective callbacks if `fs.readFile()` completes immediately?",
+      "options": [
+        "`process.nextTick` callback, `fs.readFile` callback, `setImmediate` callback",
+        "`fs.readFile` callback, `process.nextTick` callback, `setImmediate` callback",
+        "`process.nextTick` callback, `setImmediate` callback, `fs.readFile`

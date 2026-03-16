@@ -1,7 +1,15 @@
 import React from "react";
 import "./common.css";
 import { NavLink } from "react-router-dom";
-import { AiFillHome, AiOutlineLogout } from "react-icons/ai";
+import {
+  AiFillHome,
+  AiOutlineLogout,
+  AiOutlineRead,
+  AiOutlineInfoCircle,
+  AiOutlineTeam,
+  AiOutlineMail,
+  AiOutlineNotification,
+} from "react-icons/ai";
 import { FaBook, FaUserAlt } from "react-icons/fa";
 import { UserData } from "../../context/UserContext";
 
@@ -47,6 +55,66 @@ const Sidebar = () => {
               <span>Users</span>
             </NavLink>
           </li>
+        )}
+
+        {user && (user.role === "admin" || user.mainrole === "superadmin") && (
+          <>
+            <li>
+              <NavLink
+                to={"/admin/blogs"}
+                className={({ isActive }) => (isActive ? "active-nav" : "")}
+              >
+                <div className="icon">
+                  <AiOutlineRead />
+                </div>
+                <span>Blogs</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to={"/admin/about"}
+                className={({ isActive }) => (isActive ? "active-nav" : "")}
+              >
+                <div className="icon">
+                  <AiOutlineInfoCircle />
+                </div>
+                <span>About Page</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to={"/admin/careers"}
+                className={({ isActive }) => (isActive ? "active-nav" : "")}
+              >
+                <div className="icon">
+                  <AiOutlineTeam />
+                </div>
+                <span>Careers</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to={"/admin/contacts"}
+                className={({ isActive }) => (isActive ? "active-nav" : "")}
+              >
+                <div className="icon">
+                  <AiOutlineMail />
+                </div>
+                <span>Contacts</span>
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to={"/admin/newsletter"}
+                className={({ isActive }) => (isActive ? "active-nav" : "")}
+              >
+                <div className="icon">
+                  <AiOutlineNotification />
+                </div>
+                <span>Newsletter</span>
+              </NavLink>
+            </li>
+          </>
         )}
 
         <li>

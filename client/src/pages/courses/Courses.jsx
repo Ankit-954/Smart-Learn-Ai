@@ -2,13 +2,21 @@ import React, { useMemo, useState } from "react";
 import "./courses.css";
 import { CourseData } from "../../context/CourseContext";
 import CourseCard from "../../components/coursecard/CourseCard";
+import { UserData } from "../../context/UserContext";
 
 const Courses = () => {
   const { courses } = CourseData();
+  const { user, isAuth } = UserData();
   const [query, setQuery] = useState("");
   const [streamFilter, setStreamFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
   const [subjectFilter, setSubjectFilter] = useState("all");
+  const [pricingFilter, setPricingFilter] = useState("all");
+  const [collapsed, setCollapsed] = useState({
+    cart: false,
+    free: false,
+    paid: false,
+  });
 
   const streams = useMemo(() => {
     const unique = new Set((courses || []).map((c) => c.stream || c.category).filter(Boolean));
@@ -39,10 +47,30 @@ const Courses = () => {
       const matchStream = streamFilter === "all" || streamValue === streamFilter;
       const matchLevel = levelFilter === "all" || c.level === levelFilter;
       const matchSubject = subjectFilter === "all" || subjectList.includes(subjectFilter);
+      const isFree = c.isFree || Number(c.price) <= 0;
+      const matchPricing =
+        pricingFilter === "all" ||
+        (pricingFilter === "free" && isFree) ||
+        (pricingFilter === "paid" && !isFree);
 
-      return matchQuery && matchStream && matchLevel && matchSubject;
+      return matchQuery && matchStream && matchLevel && matchSubject && matchPricing;
     });
-  }, [courses, query, streamFilter, levelFilter, subjectFilter]);
+  }, [courses, query, streamFilter, levelFilter, subjectFilter, pricingFilter]);
+
+  const isEnrolled = (courseId) =>
+    isAuth &&
+    user &&
+    user.role !== "admin" &&
+    Array.isArray(user.subscription) &&
+    user.subscription.includes(courseId);
+
+  const myCartCourses = filteredCourses.filter((c) => isEnrolled(c._id));
+  const freeCourses = filteredCourses.filter(
+    (c) => c.isFree || Number(c.price) <= 0
+  );
+  const paidCourses = filteredCourses.filter(
+    (c) => !isEnrolled(c._id) && !(c.isFree || Number(c.price) <= 0)
+  );
 
   return (
     <div className="courses">
@@ -68,6 +96,7 @@ const Courses = () => {
                 setStreamFilter("all");
                 setLevelFilter("all");
                 setSubjectFilter("all");
+                setPricingFilter("all");
                 setQuery("");
               }}
             >
@@ -101,19 +130,112 @@ const Courses = () => {
               </option>
             ))}
           </select>
+
+          <label>Pricing</label>
+          <select value={pricingFilter} onChange={(e) => setPricingFilter(e.target.value)}>
+            <option value="all">All</option>
+            <option value="free">Free</option>
+            <option value="paid">Paid</option>
+          </select>
         </aside>
 
         <div className="courses-content">
           <div className="courses-result-bar">
             <span>{filteredCourses.length} courses found</span>
           </div>
-          <div className="course-container">
-            {filteredCourses.length > 0 ? (
-              filteredCourses.map((e) => <CourseCard key={e._id} course={e} />)
-            ) : (
-              <p>No courses match your filters.</p>
+          <section className="course-section">
+            <div className="course-section-header">
+              <div className="course-section-title">
+                <h3>My Cart (Purchased)</h3>
+                <span>{myCartCourses.length}</span>
+              </div>
+              <button
+                type="button"
+                className="course-section-toggle"
+                aria-expanded={!collapsed.cart}
+                onClick={() => setCollapsed((prev) => ({ ...prev, cart: !prev.cart }))}
+              >
+                {collapsed.cart ? "Show" : "Hide"}
+              </button>
+            </div>
+            {!collapsed.cart && (
+              <>
+                {myCartCourses.length > 0 ? (
+                  <div className="course-container">
+                    {myCartCourses.map((e) => (
+                      <CourseCard key={e._id} course={e} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="course-empty">
+                    {isAuth
+                      ? "No purchased courses match your filters."
+                      : "Login to see your purchased courses."}
+                  </p>
+                )}
+              </>
             )}
-          </div>
+          </section>
+
+          <section className="course-section">
+            <div className="course-section-header">
+              <div className="course-section-title">
+                <h3>Free</h3>
+                <span>{freeCourses.length}</span>
+              </div>
+              <button
+                type="button"
+                className="course-section-toggle"
+                aria-expanded={!collapsed.free}
+                onClick={() => setCollapsed((prev) => ({ ...prev, free: !prev.free }))}
+              >
+                {collapsed.free ? "Show" : "Hide"}
+              </button>
+            </div>
+            {!collapsed.free && (
+              <>
+                {freeCourses.length > 0 ? (
+                  <div className="course-container">
+                    {freeCourses.map((e) => (
+                      <CourseCard key={e._id} course={e} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="course-empty">No free courses match your filters.</p>
+                )}
+              </>
+            )}
+          </section>
+
+          <section className="course-section">
+            <div className="course-section-header">
+              <div className="course-section-title">
+                <h3>Paid</h3>
+                <span>{paidCourses.length}</span>
+              </div>
+              <button
+                type="button"
+                className="course-section-toggle"
+                aria-expanded={!collapsed.paid}
+                onClick={() => setCollapsed((prev) => ({ ...prev, paid: !prev.paid }))}
+              >
+                {collapsed.paid ? "Show" : "Hide"}
+              </button>
+            </div>
+            {!collapsed.paid && (
+              <>
+                {paidCourses.length > 0 ? (
+                  <div className="course-container">
+                    {paidCourses.map((e) => (
+                      <CourseCard key={e._id} course={e} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="course-empty">No paid courses match your filters.</p>
+                )}
+              </>
+            )}
+          </section>
         </div>
       </div>
     </div>

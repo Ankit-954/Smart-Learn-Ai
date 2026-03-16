@@ -1,12 +1,14 @@
 import React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
   AiFillHome,
   AiOutlineLogin,
   AiOutlineLogout,
   AiOutlineClose,
+  AiOutlineQuestionCircle,
+  AiOutlineMail,
 } from "react-icons/ai";
-import { FaBook, FaUserAlt } from "react-icons/fa";
+import { FaUserAlt } from "react-icons/fa";
 import { MdDashboard } from "react-icons/md";
 import { RiProfileLine } from "react-icons/ri";
 import toast from "react-hot-toast";
@@ -34,8 +36,7 @@ const UserSidebar = ({ isOpen, onClose, isAuth, user }) => {
     navigate("/login");
   };
 
-  const navClass = ({ isActive }) =>
-    `user-side-link ${isActive ? "active-nav" : ""}`;
+  const navClass = () => "user-side-link";
   const testAttempts = Array.isArray(user?.testHistory) ? user.testHistory.length : 0;
   const purchasedCourses = Array.isArray(user?.subscription) ? user.subscription.length : 0;
   const recentTestAttempts = Array.isArray(user?.testHistory)
@@ -44,6 +45,9 @@ const UserSidebar = ({ isOpen, onClose, isAuth, user }) => {
         return completedAt > Date.now() - 7 * 24 * 60 * 60 * 1000;
       }).length
     : 0;
+  const activityBasePath = "/progress";
+  const testsPath = `${activityBasePath}#tests`;
+  const coursesPath = `${activityBasePath}#courses`;
 
   return (
     <>
@@ -67,24 +71,6 @@ const UserSidebar = ({ isOpen, onClose, isAuth, user }) => {
             <AiFillHome />
             <span>Home</span>
           </NavLink>
-          <NavLink to="/courses" className={navClass} onClick={onClose}>
-            <FaBook />
-            <span>Courses</span>
-          </NavLink>
-          <NavLink to="/progress" className={navClass} onClick={onClose}>
-            <MdDashboard />
-            <span>Progress</span>
-            {isAuth && purchasedCourses > 0 && (
-              <span className="user-side-badge">{purchasedCourses}</span>
-            )}
-          </NavLink>
-          <NavLink to="/test" className={navClass} onClick={onClose}>
-            <FaUserAlt />
-            <span>Test</span>
-            {isAuth && testAttempts > 0 && (
-              <span className="user-side-badge">{testAttempts}</span>
-            )}
-          </NavLink>
           <NavLink to="/interview" className={navClass} onClick={onClose}>
             <FaUserAlt />
             <span>Interview</span>
@@ -99,6 +85,14 @@ const UserSidebar = ({ isOpen, onClose, isAuth, user }) => {
               <NavLink to="/account" className={navClass} onClick={onClose}>
                 <RiProfileLine />
                 <span>My Profile</span>
+              </NavLink>
+              <NavLink to="/faq" className={navClass} onClick={onClose}>
+                <AiOutlineQuestionCircle />
+                <span>Help Center & FAQ</span>
+              </NavLink>
+              <NavLink to="/contact" className={navClass} onClick={onClose}>
+                <AiOutlineMail />
+                <span>Contact Support</span>
               </NavLink>
               <NavLink to={`/${user?._id}/dashboard`} className={navClass} onClick={onClose}>
                 <MdDashboard />
@@ -116,14 +110,22 @@ const UserSidebar = ({ isOpen, onClose, isAuth, user }) => {
 
         {isAuth && (
           <div className="user-side-stats">
-            <div className="user-side-stat-card">
+            <Link
+              to={testsPath}
+              onClick={onClose}
+              className="user-side-stat-card user-side-stat-link"
+            >
               <span>Tests (7d)</span>
               <strong>{recentTestAttempts}</strong>
-            </div>
-            <div className="user-side-stat-card">
+            </Link>
+            <Link
+              to={coursesPath}
+              onClick={onClose}
+              className="user-side-stat-card user-side-stat-link"
+            >
               <span>Courses</span>
               <strong>{purchasedCourses}</strong>
-            </div>
+            </Link>
           </div>
         )}
 

@@ -2,8 +2,10 @@ import { User } from "../models/User.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import axios from "axios";
+import { OAuth2Client } from "google-auth-library";
 import { Courses } from "../models/Courses.js";
 import { Progress } from "../models/Progress.js";
+import { Interview } from "../models/Interview.js";
 import sendMail, {
   sendCallbackRequestMail,
   sendForgotMail,
@@ -164,7 +166,7 @@ const CHAT_SUPPORT_PLAYBOOK = [
     intent: CHAT_INTENTS.PAYMENT_SUPPORT,
     keywords: ["international", "card", "payment", "razorpay", "domestic"],
     answer:
-      "Razorpay is rejecting the card as international.\nUse UPI or an Indian domestic test card in test mode.\nAlso confirm order is created on backend with amount in paise (for example 2500 for Rs 25) and currency INR.",
+      "Your card was not accepted in test mode.\nUse UPI test flow or a domestic test card.\nThen retry payment from the same course page.",
     links: [
       { label: "Browse Courses", url: "/courses", type: "course" },
       { label: "Open Account", url: "/account", type: "account" },
@@ -175,7 +177,7 @@ const CHAT_SUPPORT_PLAYBOOK = [
     intent: CHAT_INTENTS.GENERAL_SUPPORT,
     keywords: ["403", "forbidden", "token", "unauthorized", "login", "session"],
     answer:
-      "Your session token is invalid or expired.\nLogout and login again, then retry the action.\nIf it still fails, clear local storage token and sign in once more.",
+      "Your session has expired.\nLog out and log in again, then retry.\nIf it still fails, close the app and open it again.",
     links: [
       { label: "Open Login", url: "/login", type: "account" },
       { label: "Open Account", url: "/account", type: "account" },
@@ -186,7 +188,7 @@ const CHAT_SUPPORT_PLAYBOOK = [
     intent: CHAT_INTENTS.PROGRESS_HELP,
     keywords: ["lecture", "video", "not playing", "no lectures", "continue course"],
     answer:
-      "Course is purchased but lecture list is empty, so player cannot start.\nVerify lecture is uploaded in admin Add Lecture section for that course.\nAfter lecture upload, refresh course study page and click lecture from right panel.",
+      "Your course is active but lectures are not visible right now.\nRefresh the page and open the course again after a short wait.\nIf it still does not load, use Request Call Back from chat so support can fix it.",
     links: [
       { label: "Open Progress Dashboard", url: "/progress", type: "progress" },
       { label: "Browse My Courses", url: "/courses", type: "course" },
@@ -197,7 +199,7 @@ const CHAT_SUPPORT_PLAYBOOK = [
     intent: CHAT_INTENTS.TEST_DISCOVERY,
     keywords: ["json", "parse", "question", "expected", "unterminated", "test"],
     answer:
-      "Question generation failed due malformed AI JSON.\nRetry test once with fresh generation and lower token pressure.\nIf issue repeats, regenerate with same domain and check server logs for model response truncation.",
+      "The test could not load questions this time.\nRetry once with a fresh attempt.\nIf it repeats, switch domain once and try again.",
     links: [
       { label: "Open Test Domains", url: "/test", type: "test" },
       { label: "Open Progress Dashboard", url: "/progress", type: "progress" },
@@ -335,8 +337,50 @@ const buildSupportLinksByQuestion = (question = "") => {
   if (/\b(test|quiz|mcq|assessment)\b/.test(q)) {
     links.push({ label: "Open Test Domains", url: "/test", type: "test" });
   }
-  links.push({ label: "Request Callback", url: "/reviews", type: "support" });
+  if (/\b(help|support|callback|contact|human|call)\b/.test(q)) {
+    links.push({ label: "Request Callback", url: "/reviews", type: "support" });
+  }
   return dedupeLinks(links).slice(0, 6);
+};
+
+const getDefaultLinksForIntent = (intent, userContext) => {
+  if (intent === CHAT_INTENTS.COURSE_DISCOVERY) {
+    return dedupeLinks([
+      { label: "Browse All Courses", url: "/courses", type: "course" },
+      { label: "Open Roadmaps", url: "/roadmap/Web%20Development", type: "course" },
+    ]);
+  }
+  if (intent === CHAT_INTENTS.TEST_DISCOVERY) {
+    return dedupeLinks([
+      { label: "Open Test Domains", url: "/test", type: "test" },
+      { label: "Open Progress Dashboard", url: "/progress", type: "progress" },
+    ]);
+  }
+  if (intent === CHAT_INTENTS.PAYMENT_SUPPORT) {
+    return dedupeLinks([
+      { label: "Browse Courses", url: "/courses", type: "course" },
+      { label: "Open Account", url: "/account", type: "account" },
+    ]);
+  }
+  if (intent === CHAT_INTENTS.PROGRESS_HELP) {
+    const links = [
+      { label: "Open Progress Dashboard", url: "/progress", type: "progress" },
+      { label: "Open Account", url: "/account", type: "account" },
+    ];
+    if (userContext?.subscribedCourses?.[0]?._id) {
+      links.unshift({
+        label: `Continue ${userContext.subscribedCourses[0].title}`,
+        url: `/course/study/${userContext.subscribedCourses[0]._id}`,
+        type: "course",
+      });
+    }
+    return dedupeLinks(links);
+  }
+  return dedupeLinks([
+    { label: "Browse All Courses", url: "/courses", type: "course" },
+    { label: "Open Test Domains", url: "/test", type: "test" },
+    { label: "Request Callback", url: "/reviews", type: "support" },
+  ]);
 };
 
 const findSupportPlaybookMatch = (question, intent) => {
@@ -370,13 +414,13 @@ const buildSuggestedQuestions = ({ intent, question, toolContext, userContext })
   if (intent === CHAT_INTENTS.TEST_DISCOVERY) {
     suggestions.unshift(`Create a test strategy for ${String(question || "").trim() || "this topic"}`);
   }
-  if (userContext?.stats?.testsAttempted > 0) {
+  if (intent === CHAT_INTENTS.TEST_DISCOVERY && userContext?.stats?.testsAttempted > 0) {
     suggestions.unshift("Analyze my recent test weak areas");
   }
-  if ((userContext?.subscribedCourses || []).length > 0) {
+  if (intent === CHAT_INTENTS.PROGRESS_HELP && (userContext?.subscribedCourses || []).length > 0) {
     suggestions.unshift("Help me continue my purchased courses effectively");
   }
-  return [...new Set(suggestions.map((x) => String(x).trim()).filter(Boolean))].slice(0, 4);
+  return [...new Set(suggestions.map((x) => String(x).trim()).filter(Boolean))].slice(0, 3);
 };
 
 const buildFallbackAgentAnswer = ({ question, intent, playbookMatch, userContext }) => {
@@ -389,12 +433,52 @@ const buildFallbackAgentAnswer = ({ question, intent, playbookMatch, userContext
     return `For "${question}", take one focused test first, review mistakes, then retake with higher difficulty.\nTrack score from Progress page and repeat weak topics.\nUse the suggested test links below.`;
   }
   if (intent === CHAT_INTENTS.PROGRESS_HELP) {
-    return "Open Progress to continue your latest course and track completion.\nIf lecture is not visible, confirm lecture is uploaded in admin for that course.\nThen reload and continue from lecture list.";
+    return "Open Progress to continue your latest course and track completion.\nIf lectures are missing, refresh and reopen the course after a short wait.\nIf it still fails, use Request Call Back and share the course name.";
   }
   if (intent === CHAT_INTENTS.PAYMENT_SUPPORT) {
-    return "For payment issues, verify Razorpay order is created with INR and amount in paise.\nIn test mode, prefer UPI or domestic test card.\nIf payment still fails, retry checkout from course page.";
+    return "For payment issues, retry checkout from the same course page.\nIn test mode, prefer UPI or domestic test card.\nIf it still fails, use Request Call Back and share the course name.";
   }
   return "I can help with courses, tests, roadmap, payments, and progress.\nTell me your goal (for example: become React developer in 3 months) and I will give a focused plan.";
+};
+
+const sanitizeChatAnswer = (rawText = "") => {
+  const internalDetailPatterns = [
+    /\badmin\b/i,
+    /\bbackend\b/i,
+    /\bdatabase\b/i,
+    /\bserver logs?\b/i,
+    /\bapi\b/i,
+    /\bendpoint\b/i,
+    /\bpayload\b/i,
+    /\bjson\b/i,
+    /\bmodel response\b/i,
+    /\btoken pressure\b/i,
+    /\bpaise\b/i,
+  ];
+
+  const text = String(rawText || "")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  if (!text) return "";
+
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !internalDetailPatterns.some((pattern) => pattern.test(line)));
+  const uniqueLines = [];
+  const seen = new Set();
+  for (const line of lines) {
+    const key = line.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueLines.push(line);
+  }
+
+  const compact = uniqueLines.join("\n");
+  return compact.length > 900 ? `${compact.slice(0, 900).trim()}...` : compact;
 };
 
 const callGroq = async ({ messages, temperature = 0.2, max_tokens = 260 }) => {
@@ -486,7 +570,7 @@ const buildAgentToolContext = async ({ intent, question, userContext }) => {
   const links = [];
   const context = { courses: [], testDomains: [], topCourses: [], user: userContext || null };
 
-  if (intent === CHAT_INTENTS.COURSE_DISCOVERY || intent === CHAT_INTENTS.GENERAL_SUPPORT) {
+  if (intent === CHAT_INTENTS.COURSE_DISCOVERY) {
     toolsUsed.push("toolFindCourses");
     const courses = await toolFindCourses(question);
     const topCourses = await toolFindTopCourses();
@@ -502,7 +586,7 @@ const buildAgentToolContext = async ({ intent, question, userContext }) => {
     links.push({ label: "Browse All Courses", url: "/courses", type: "course" });
   }
 
-  if (intent === CHAT_INTENTS.TEST_DISCOVERY || intent === CHAT_INTENTS.GENERAL_SUPPORT) {
+  if (intent === CHAT_INTENTS.TEST_DISCOVERY) {
     toolsUsed.push("toolBuildTestLinks");
     const testLinks = buildTestLinks(question);
     context.testDomains = testLinks.map((x) => x.label);
@@ -519,11 +603,6 @@ const buildAgentToolContext = async ({ intent, question, userContext }) => {
     toolsUsed.push("toolPaymentRoutes");
     links.push({ label: "Browse Courses", url: "/courses", type: "course" });
     links.push({ label: "Open Account", url: "/account", type: "account" });
-  }
-
-  if (intent === CHAT_INTENTS.GENERAL_SUPPORT) {
-    links.push({ label: "Open Dashboard", url: "/account", type: "account" });
-    links.push({ label: "Open Reviews", url: "/reviews", type: "support" });
   }
 
   if (userContext?.subscribedCourses?.[0]) {
@@ -543,7 +622,7 @@ const composeAgentAnswer = async ({ question, safeHistory, intent, toolContext, 
   const system = {
     role: "system",
     content:
-      "You are SmartLearn AI support agent.\nAnswer ONLY for SmartLearn platform.\nBe practical and actionable.\nOutput plain text in this structure:\nDirect Answer: <1-2 lines>\nAction Steps:\n1) ...\n2) ...\n3) ...\nNext Best Action: <single line>\nKeep total under 140 words.",
+      "You are SmartLearn support assistant.\nRules:\n1) Answer only about SmartLearn platform use cases.\n2) Be concrete, short, and non-repetitive.\n3) Do not add motivational or generic filler.\n4) Do not invent unavailable data.\n5) Never mention admin panels, backend internals, APIs, server logs, or technical implementation details.\n6) Keep response under 120 words.\nOutput format (plain text only):\nSummary: <one line>\nSteps:\n1. ...\n2. ...\n3. ...",
   };
   const toolMessage = {
     role: "system",
@@ -555,11 +634,11 @@ const composeAgentAnswer = async ({ question, safeHistory, intent, toolContext, 
   const user = { role: "user", content: question };
   let answer = await callGroq({
     messages: [system, toolMessage, ...safeHistory, user],
-    temperature: 0.25,
-    max_tokens: 340,
+    temperature: 0.1,
+    max_tokens: 260,
   });
-  answer = String(answer || "").trim();
-  return answer || "Direct Answer: I can help you with SmartLearn courses, tests, progress, and payments.\nAction Steps:\n1) Open the most relevant section using links.\n2) Complete one focused action.\n3) Come back with your result.\nNext Best Action: Start from the first link below.";
+  answer = sanitizeChatAnswer(answer);
+  return answer || "Summary: I can help with SmartLearn courses, tests, payments, and progress.\nSteps:\n1. Open the most relevant section using the links.\n2. Complete one focused action.\n3. Share what failed if you need deeper help.";
 };
 
 const extractJSONObjectString = (text = "") => {
@@ -574,52 +653,346 @@ const extractJSONObjectString = (text = "") => {
   return clean.slice(start, end + 1);
 };
 
+const getLanguageProfile = (topicRaw = "") => {
+  const raw = String(topicRaw || "").toLowerCase().trim();
+  const compact = compactQuery(topicRaw);
+  const tokens = compact.split(" ").filter(Boolean);
+
+  const match = (aliases) => aliases.some((alias) => raw.includes(alias) || compact.includes(alias));
+  const hasToken = (token) => tokens.includes(token);
+
+  if (match(["c++", "cpp", "c plus plus", "cplusplus"])) {
+    return { canonical: "C++", key: "cpp" };
+  }
+  if (match(["c#", "c sharp", "csharp"])) {
+    return { canonical: "C#", key: "csharp" };
+  }
+  if (match(["javascript"]) || hasToken("js")) {
+    return { canonical: "JavaScript", key: "javascript" };
+  }
+  if (match(["typescript"]) || hasToken("ts")) {
+    return { canonical: "TypeScript", key: "typescript" };
+  }
+  if (match(["python"]) || hasToken("py")) {
+    return { canonical: "Python", key: "python" };
+  }
+  if (match(["java"]) && !match(["javascript"])) {
+    return { canonical: "Java", key: "java" };
+  }
+  if (match(["golang", "go language"]) || hasToken("go")) {
+    return { canonical: "Go", key: "go" };
+  }
+  if (match(["rust"])) {
+    return { canonical: "Rust", key: "rust" };
+  }
+  if (match(["swift"])) {
+    return { canonical: "Swift", key: "swift" };
+  }
+  if (match(["kotlin"])) {
+    return { canonical: "Kotlin", key: "kotlin" };
+  }
+  if (match(["php"])) {
+    return { canonical: "PHP", key: "php" };
+  }
+  if (match(["ruby"])) {
+    return { canonical: "Ruby", key: "ruby" };
+  }
+  if (match(["c language", "c programming"]) || raw === "c") {
+    return { canonical: "C", key: "c" };
+  }
+
+  return null;
+};
+
+const buildLanguageRoadmap = ({ topic, matchedCourses, profile }) => {
+  const picks = matchedCourses.slice(0, 4);
+
+  const baseTopics = {
+    phase1: [
+      { name: "Syntax + types", importance: "IMPORTANT", details: "Learn variables, primitive types, and basic language syntax." },
+      { name: "Operators + control flow", details: "Master branching, loops, and conditionals." },
+      { name: "Functions + scope", details: "Write functions, understand scope, and pass arguments safely." },
+      { name: "Input/Output basics", details: "Read input, write output, and handle basic file I/O." },
+      { name: "Tooling + build/run", details: "Set up the compiler/interpreter, run locally, and use a debugger." },
+      { name: "Code style", details: "Follow naming, formatting, and basic conventions." },
+    ],
+    phase2: [
+      { name: "Arrays + strings", importance: "IMPORTANT", details: "Work with indexed collections, string operations, and memory layout." },
+      { name: "Pointers/references", details: "Understand references, addresses, and safe data access (if applicable)." },
+      { name: "OOP fundamentals", importance: "IMPORTANT", details: "Classes, objects, encapsulation, inheritance, and polymorphism." },
+      { name: "Error handling", details: "Use exceptions or error codes consistently." },
+      { name: "Modules/packages", details: "Organize code across files and reuse components." },
+      { name: "Data structures basics", details: "Lists, stacks, queues, and hash maps." },
+    ],
+    phase3: [
+      { name: "Standard library collections", importance: "IMPORTANT", details: "Use built-in containers, maps, sets, and iterators." },
+      { name: "Algorithms + complexity", details: "Sorting, searching, and Big-O reasoning." },
+      { name: "File handling + serialization", details: "Read/write files and store structured data." },
+      { name: "Regex + text processing", details: "Parse and validate text with patterns." },
+      { name: "Date/time utilities", details: "Work with timestamps, formatting, and time zones." },
+      { name: "CLI utilities", details: "Build basic command-line interfaces and argument parsing." },
+    ],
+    phase4: [
+      { name: "Testing fundamentals", importance: "IMPORTANT", details: "Write unit tests and integration tests for core logic." },
+      { name: "Debugging + logging", details: "Trace issues with logs and debugger tools." },
+      { name: "Design patterns", details: "Apply common patterns like factory, strategy, and observer." },
+      { name: "Documentation", details: "Write README and API docs for maintainability." },
+      { name: "Dependency management", details: "Manage packages and versions responsibly." },
+      { name: "Code review habits", details: "Refactor for readability and correctness." },
+    ],
+    phase5: [
+      { name: "Performance profiling", importance: "IMPORTANT", details: "Measure hot paths and optimize bottlenecks." },
+      { name: "Memory optimization", details: "Reduce allocations and manage resource lifecycles." },
+      { name: "Concurrency/async", details: "Threads, async I/O, and synchronization primitives." },
+      { name: "Networking basics", details: "HTTP clients, sockets, and API integration." },
+      { name: "Security basics", details: "Input validation and safe defaults." },
+      { name: "Packaging + deployment", details: "Ship a runnable build or distributable artifact." },
+    ],
+  };
+
+  const languageExtras = {
+    cpp: {
+      phase2: [
+        { name: "Pointers + references", importance: "IMPORTANT", details: "Stack vs heap, references, and pointer safety." },
+        { name: "RAII + object lifetime", details: "Understand constructors, destructors, and resource ownership." },
+      ],
+      phase3: [
+        { name: "STL containers", importance: "IMPORTANT", details: "vector, map, unordered_map, list, and their tradeoffs." },
+        { name: "Templates + generics", details: "Write reusable code with templates and type inference." },
+      ],
+      phase5: [
+        { name: "Move semantics", details: "Rule of 3/5/0, rvalue references, and efficient transfers." },
+        { name: "CMake basics", details: "Structure builds and manage dependencies." },
+      ],
+      pitfalls: [
+        "Undefined behavior from invalid memory access",
+        "Mixing raw pointers and ownership assumptions",
+      ],
+    },
+    java: {
+      phase1: [{ name: "JVM + JDK setup", details: "Install JDK, configure PATH, and understand JVM basics." }],
+      phase3: [
+        { name: "Collections framework", importance: "IMPORTANT", details: "List, Set, Map, and performance tradeoffs." },
+        { name: "Streams + lambdas", details: "Functional operations and clean pipelines." },
+      ],
+      phase5: [{ name: "JVM performance + GC", details: "Understand garbage collection and performance tuning." }],
+    },
+    python: {
+      phase1: [{ name: "Virtual environments", details: "Use venv/pyenv and manage dependencies cleanly." }],
+      phase3: [{ name: "Generators + iterators", details: "Lazy evaluation and efficient data handling." }],
+      phase5: [{ name: "Asyncio basics", details: "Async/await and concurrency patterns." }],
+    },
+    javascript: {
+      phase2: [{ name: "Functions + closures", importance: "IMPORTANT", details: "Scope, closures, and higher-order functions." }],
+      phase3: [{ name: "Promises + async/await", details: "Handle async data and error flows." }],
+      phase5: [{ name: "Event loop", details: "Task vs microtask queues and performance impact." }],
+    },
+    typescript: {
+      phase1: [{ name: "Type system", importance: "IMPORTANT", details: "Basic types, unions, intersections, and inference." }],
+      phase3: [{ name: "Generics + utility types", details: "Build reusable typed APIs." }],
+      phase4: [{ name: "TS config + build", details: "tsconfig, strict modes, and build output." }],
+    },
+    go: {
+      phase2: [{ name: "Interfaces", details: "Implicit interfaces and composition." }],
+      phase5: [
+        { name: "Goroutines + channels", importance: "IMPORTANT", details: "Concurrency patterns and synchronization." },
+        { name: "Go modules", details: "Dependency management and module layout." },
+      ],
+    },
+    rust: {
+      phase2: [
+        { name: "Ownership + borrowing", importance: "IMPORTANT", details: "Move, borrow, and lifetimes to ensure memory safety." },
+        { name: "Traits + generics", details: "Build reusable abstractions." },
+      ],
+      phase4: [{ name: "Cargo + crates", details: "Project structure and dependency management." }],
+    },
+    csharp: {
+      phase3: [{ name: "LINQ", importance: "IMPORTANT", details: "Query collections with expressive syntax." }],
+      phase5: [{ name: "async/await", details: "Non-blocking I/O and task-based concurrency." }],
+    },
+  };
+
+  const extras = languageExtras[profile?.key || ""] || {};
+
+  const mergeTopics = (base, extra = [], max = 8) => {
+    const seen = new Set();
+    const out = [];
+    const add = (item) => {
+      if (!item || !item.name) return;
+      const key = String(item.name).toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(item);
+    };
+    extra.forEach(add);
+    base.forEach(add);
+    return out.slice(0, max);
+  };
+
+  const phasePitfalls = (base, extra = []) => [...extra, ...base].slice(0, 5);
+
+  return {
+    topic,
+    summary: `A comprehensive, senior-level ${topic} roadmap covering language fundamentals, core CS concepts, tooling, performance, and production readiness.`,
+    totalDurationWeeks: 16,
+    phases: [
+      {
+        title: "Foundations + Tooling",
+        durationWeeks: 3,
+        phaseDescription: `Learn the syntax, core types, and toolchain for ${topic}. Establish a clean, repeatable workflow for writing and running code.`,
+        topics: mergeTopics(baseTopics.phase1, extras.phase1),
+        projects: [
+          { name: "CLI Basics", explanation: `Build a small ${topic} CLI that reads input, processes it, and outputs results.`, techStack: [topic] },
+          { name: "Mini Utilities Pack", explanation: "Create 3-4 small utilities (calculator, file parser, formatter) to practice basics.", techStack: [topic] },
+        ],
+        commonPitfalls: phasePitfalls(
+          ["Skipping debugging practice", "Inconsistent code style", "Not understanding basic types"],
+          extras.pitfalls
+        ),
+        checkpoints: ["Run and debug a simple app", "Explain variables, types, and scope", "Use the toolchain confidently"],
+      },
+      {
+        title: "Core CS + OOP",
+        durationWeeks: 4,
+        phaseDescription: `Master arrays, strings, OOP, and fundamental data structures. Build confidence in structuring code cleanly.`,
+        topics: mergeTopics(baseTopics.phase2, extras.phase2),
+        projects: [
+          { name: "Library Manager", explanation: "Build a CRUD console app using classes, validation, and structured data.", techStack: [topic] },
+          { name: "DSA Practice Set", explanation: "Implement arrays, strings, stacks, and queues with tests.", techStack: [topic, "Tests"] },
+        ],
+        commonPitfalls: phasePitfalls(
+          ["Tight coupling in OOP design", "Ignoring edge cases", "Weak understanding of memory/data flow"],
+          extras.pitfalls
+        ),
+        checkpoints: ["Implement OOP with clean design", "Solve 10 array/string problems", "Explain memory/layout tradeoffs"],
+      },
+      {
+        title: "Standard Library + Algorithms",
+        durationWeeks: 3,
+        phaseDescription: `Use the standard library effectively and apply common algorithms with proper complexity reasoning.`,
+        topics: mergeTopics(baseTopics.phase3, extras.phase3),
+        projects: [
+          { name: "Log Analyzer", explanation: "Parse large text files, filter results, and generate reports.", techStack: [topic] },
+          { name: "Data Processor", explanation: "Implement sorting, searching, and transformation pipelines.", techStack: [topic] },
+        ],
+        commonPitfalls: ["Reinventing standard library features", "Ignoring algorithmic complexity", "Poor error handling"],
+        checkpoints: ["Use built-in collections correctly", "Explain time complexity of key operations", "Process files safely"],
+      },
+      {
+        title: "Engineering Practices",
+        durationWeeks: 3,
+        phaseDescription: "Build reliable, testable code and follow engineering best practices expected in teams.",
+        topics: mergeTopics(baseTopics.phase4, extras.phase4),
+        projects: [
+          { name: "Testing Upgrade", explanation: "Add unit and integration tests to previous projects.", techStack: [topic, "Tests"] },
+          { name: "Refactor + Docs", explanation: "Refactor for readability, document APIs, and improve structure.", techStack: [topic] },
+        ],
+        commonPitfalls: ["Skipping tests", "Poor documentation", "Unclear module boundaries"],
+        checkpoints: ["Write tests for core flows", "Document API usage", "Explain design decisions"],
+      },
+      {
+        title: "Performance + Production",
+        durationWeeks: 3,
+        phaseDescription: `Optimize performance, handle concurrency safely, and prepare production-ready deliverables.`,
+        topics: mergeTopics(baseTopics.phase5, extras.phase5),
+        projects: [
+          { name: "Performance Pass", explanation: "Profile and optimize a real project, documenting improvements.", techStack: [topic] },
+          { name: "Capstone Project", explanation: "Build a production-style application with deployment notes and tests.", techStack: [topic, "Deploy"] },
+        ],
+        commonPitfalls: ["Premature optimization", "Unsafe concurrency", "Shipping without validation"],
+        checkpoints: ["Demonstrate measurable optimizations", "Ship a deployed or packaged app", "Explain tradeoffs clearly"],
+      },
+    ],
+    recommendedCourseIndexes: picks.map((_, idx) => idx),
+    learningTips: [
+      "Practice daily with small, focused exercises.",
+      "Solve 8-12 DSA problems per week alongside language study.",
+      "Keep a running notes doc of key concepts and mistakes.",
+      "Build at least one project per phase.",
+      "Explain concepts aloud to validate understanding.",
+      "Use checkpoints as your real progress measure.",
+    ],
+  };
+};
+
 const buildRoadmapFallback = ({ topic, matchedCourses }) => {
   const picks = matchedCourses.slice(0, 4);
   return {
     topic,
-    summary: `A practical roadmap to master ${topic} with weekly progression, outcomes, and project-based learning.`,
-    totalDurationWeeks: 12,
+    summary: `A practical, senior-level roadmap to master ${topic} with weekly progression, concrete outcomes, and production-style projects.`,
+    totalDurationWeeks: 16,
     phases: [
       {
-        title: "Foundation",
+        title: "Foundations + Setup",
         durationWeeks: 3,
-        focus: `Build strong fundamentals for ${topic}`,
-        goals: ["Understand fundamentals", "Set up learning environment", "Build learning consistency"],
-        skills: ["Core concepts", "Syntax and basics", "Problem decomposition"],
-        outcomes: ["Understand key concepts clearly", "Can build simple working examples"],
-        projects: [`Build a starter ${topic} mini-project`],
-        resources: ["Official docs", "Beginner tutorials", "Concept notes"],
-        checkpoints: ["Complete 1 mini project", "Explain basics without notes"],
+        phaseDescription: `Build strong fundamentals for ${topic} and establish a reliable development workflow.`,
+        topics: [
+          { name: "Core concepts", importance: "IMPORTANT", details: "Understand the primary syntax, data flow, and fundamental patterns." },
+          { name: "Tooling + environment", details: "Install required tooling, configure linters/formatters, and set up a clean repo." },
+          { name: "Version control", details: "Use Git effectively with branching, commits, and basic collaboration workflows." },
+        ],
+        projects: [
+          { name: "Starter mini-project", explanation: `Build a small but complete ${topic} app that reads, transforms, and presents data.`, techStack: [topic, "Git"] }
+        ],
+        commonPitfalls: ["Skipping basics", "Copying without understanding", "No consistent practice routine"],
+        checkpoints: ["Explain core concepts without notes", "Ship a small working app"],
       },
       {
-        title: "Core Skills",
+        title: "Core Skills + Patterns",
         durationWeeks: 5,
-        focus: `Develop intermediate implementation skills in ${topic}`,
-        goals: ["Build intermediate capability", "Work with real use-cases", "Improve debugging skills"],
-        skills: ["Problem solving", "Practical implementation", "Code structure"],
-        outcomes: ["Can build medium features independently", "Can troubleshoot common issues"],
-        projects: [`Create a medium-level ${topic} project`],
-        resources: ["Project-based tutorials", "Code challenges", "Best-practice guides"],
-        checkpoints: ["Complete 2 real use-case tasks", "Refactor one project module"],
+        phaseDescription: `Develop intermediate implementation skills, structure code cleanly, and handle common scenarios.`,
+        topics: [
+          { name: "Common patterns", importance: "IMPORTANT", details: "Learn patterns and conventions used in real-world codebases." },
+          { name: "State + data flow", details: "Manage data predictably, handle side effects, and reason about flow." },
+          { name: "Debugging + profiling", details: "Trace issues, use tooling, and measure performance bottlenecks." },
+          { name: "Testing basics", details: "Write unit/integration tests for core workflows." },
+        ],
+        projects: [
+          { name: "Feature-rich app", explanation: `Create a multi-feature ${topic} project with CRUD, validation, and error states.`, techStack: [topic] },
+          { name: "Testing upgrade", explanation: "Add tests that validate critical flows and edge cases.", techStack: ["Tests", topic] },
+        ],
+        commonPitfalls: ["Ignoring edge cases", "Tightly coupled modules", "Skipping tests"],
+        checkpoints: ["Complete 2 real-world workflows", "Refactor one module for clarity"],
       },
       {
-        title: "Advanced + Portfolio",
+        title: "Advanced Concepts + Quality",
         durationWeeks: 4,
-        focus: `Move to advanced concepts and portfolio readiness`,
-        goals: ["Apply advanced patterns", "Prepare job-ready portfolio", "Practice interview-level tasks"],
-        skills: ["Optimization", "System thinking", "Architecture and tradeoffs"],
-        outcomes: ["Can design end-to-end solutions", "Portfolio has one capstone project"],
-        projects: [`Build an end-to-end ${topic} capstone`],
-        resources: ["Advanced docs", "Architecture case studies", "Mock interview sets"],
-        checkpoints: ["Complete capstone", "Write deployment + README documentation"],
+        phaseDescription: `Move to advanced concepts, architecture choices, and quality practices expected in teams.`,
+        topics: [
+          { name: "Architecture + scalability", importance: "IMPORTANT", details: "Choose modules, boundaries, and tradeoffs for maintainability." },
+          { name: "Performance optimization", details: "Identify and fix slow paths and heavy operations." },
+          { name: "Security + reliability", details: "Handle validation, safe defaults, and error recovery." },
+        ],
+        projects: [
+          { name: "Optimization pass", explanation: `Improve performance and stability of the previous project with measurable wins.`, techStack: [topic] },
+        ],
+        commonPitfalls: ["Over-engineering", "Premature optimization", "Ignoring security basics"],
+        checkpoints: ["Document tradeoffs", "Show performance improvements"],
+      },
+      {
+        title: "Capstone + Career Readiness",
+        durationWeeks: 4,
+        phaseDescription: `Build a production-ready portfolio project and prepare for interviews or practical assessments.`,
+        topics: [
+          { name: "System design thinking", details: "Explain architecture, data flow, and scaling decisions clearly." },
+          { name: "Deployment + monitoring", details: "Ship, observe, and troubleshoot a live app." },
+          { name: "Interview prep", importance: "IMPORTANT", details: "Practice common questions and build concise explanations." },
+        ],
+        projects: [
+          { name: "End-to-end capstone", explanation: `Build a production-style ${topic} capstone with documentation, tests, and deployment.`, techStack: [topic, "Deploy"] },
+        ],
+        commonPitfalls: ["Shipping without docs", "Skipping deployment practice"],
+        checkpoints: ["Complete capstone", "Write README + deployment guide"],
       },
     ],
     recommendedCourseIndexes: picks.map((_, idx) => idx),
     learningTips: [
       "Practice daily in short focused sessions.",
-      "Complete one project per phase.",
-      "Revise weak topics every week.",
+      "Build at least one project per phase.",
+      "Review weak areas every week.",
+      "Write brief weekly retrospectives of what you learned.",
+      "Explain concepts aloud to solidify understanding.",
+      "Measure progress using checkpoints.",
     ],
   };
 };
@@ -679,6 +1052,54 @@ const normalizeTextList = (list, limit = 6) => {
 };
 
 const normalizeRoadmapPhases = (rawPhases = []) => {
+  const normalizeTopicItem = (item) => {
+    if (item === null || item === undefined) return null;
+    if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
+      return { name: String(item).trim() };
+    }
+    if (typeof item === "object") {
+      const name =
+        (typeof item.name === "string" && item.name.trim()) ||
+        (typeof item.title === "string" && item.title.trim()) ||
+        (typeof item.topic === "string" && item.topic.trim()) ||
+        "";
+      const details =
+        (typeof item.details === "string" && item.details.trim()) ||
+        (typeof item.description === "string" && item.description.trim()) ||
+        "";
+      const importance =
+        typeof item.importance === "string" && item.importance.trim()
+          ? item.importance.trim().toUpperCase()
+          : "";
+      if (!name && !details) return null;
+      return { name: name || details, details, importance };
+    }
+    return null;
+  };
+
+  const normalizeProjectItem = (item) => {
+    if (item === null || item === undefined) return null;
+    if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
+      return String(item).trim();
+    }
+    if (typeof item === "object") {
+      const name =
+        (typeof item.name === "string" && item.name.trim()) ||
+        (typeof item.title === "string" && item.title.trim()) ||
+        "";
+      const explanation =
+        (typeof item.explanation === "string" && item.explanation.trim()) ||
+        (typeof item.description === "string" && item.description.trim()) ||
+        "";
+      const techStack = Array.isArray(item.techStack)
+        ? item.techStack.map((t) => String(t).trim()).filter(Boolean).slice(0, 6)
+        : [];
+      if (!name && !explanation) return null;
+      return { name: name || "Project", explanation, techStack };
+    }
+    return null;
+  };
+
   let runningWeek = 1;
   const phases = [];
   for (let i = 0; i < rawPhases.length; i += 1) {
@@ -688,18 +1109,46 @@ const normalizeRoadmapPhases = (rawPhases = []) => {
     const weekEnd = runningWeek + durationWeeks - 1;
     runningWeek = weekEnd + 1;
 
+    const phaseDescription =
+      normalizeTextItem(phase.phaseDescription) ||
+      normalizeTextItem(phase.description) ||
+      normalizeTextItem(phase.focus);
+
+    const derivedTopics = Array.isArray(phase.topics)
+      ? phase.topics.map(normalizeTopicItem).filter(Boolean).slice(0, 8)
+      : [];
+
+    const derivedProjects = Array.isArray(phase.projects)
+      ? phase.projects.map(normalizeProjectItem).filter(Boolean).slice(0, 6)
+      : [];
+
+    const commonPitfalls = normalizeTextList(phase.commonPitfalls, 6);
+    const checkpoints = normalizeTextList(phase.checkpoints, 8);
+
+    const goals = normalizeTextList(phase.goals, 6);
+    const skills = normalizeTextList(phase.skills, 8);
+    const outcomes = normalizeTextList(phase.outcomes, 6);
+    const resources = normalizeTextList(phase.resources, 6);
+
+    const fallbackTopics = derivedTopics.length
+      ? derivedTopics
+      : [...skills, ...goals].slice(0, 8).map((t) => ({ name: t }));
+
     phases.push({
       title: String(phase.title || `Phase ${i + 1}`).trim(),
       focus: normalizeTextItem(phase.focus),
       durationWeeks,
       weekStart,
       weekEnd,
-      goals: normalizeTextList(phase.goals, 6),
-      skills: normalizeTextList(phase.skills, 8),
-      outcomes: normalizeTextList(phase.outcomes, 6),
-      projects: normalizeTextList(phase.projects, 6),
-      resources: normalizeTextList(phase.resources, 6),
-      checkpoints: normalizeTextList(phase.checkpoints, 6),
+      phaseDescription,
+      topics: fallbackTopics,
+      projects: derivedProjects.length ? derivedProjects : normalizeTextList(phase.projects, 6),
+      commonPitfalls,
+      checkpoints,
+      goals,
+      skills,
+      outcomes,
+      resources,
     });
   }
   return phases;
@@ -773,6 +1222,56 @@ const normalizeInterviewEvaluation = (value = {}) => {
     weaknesses: String(value?.weaknesses || "").trim() || "Needs deeper technical details and real examples.",
     feedback: String(value?.feedback || "").trim() || "Add architecture choices, tradeoffs, and concrete implementation details.",
   };
+};
+
+const assessAnswerQuality = (answer = "") => {
+  const text = String(answer || "").trim();
+  const lower = text.toLowerCase();
+  const words = text ? text.split(/\s+/).filter(Boolean) : [];
+  const wordCount = words.length;
+  const charCount = text.length;
+  const reasons = [];
+  let maxScore = 10;
+
+  if (!text) {
+    maxScore = 1;
+    reasons.push("No answer provided.");
+  } else if (wordCount < 8 || charCount < 40) {
+    maxScore = 2;
+    reasons.push("Answer is too short.");
+  } else if (wordCount < 20 || charCount < 120) {
+    maxScore = 4;
+    reasons.push("Answer lacks detail.");
+  } else if (wordCount < 40 || charCount < 220) {
+    maxScore = 6;
+    reasons.push("Needs more depth and concrete examples.");
+  }
+
+  if (/(don't know|dont know|no idea|not sure|skip|pass|idk)\b/.test(lower)) {
+    maxScore = Math.min(maxScore, 3);
+    reasons.push("Candidate indicated uncertainty.");
+  }
+
+  return { maxScore, reasons, wordCount, charCount };
+};
+
+const applyAnswerQualityToEvaluation = (evaluation, answer) => {
+  const quality = assessAnswerQuality(answer);
+  const scoreNum = Number.parseFloat(String(evaluation?.score || "").replace(/[^\d.]/g, ""));
+  const baseScore = Number.isFinite(scoreNum) ? Math.round(scoreNum) : 5;
+  const capped = Math.min(Math.max(1, baseScore), quality.maxScore);
+
+  const updated = {
+    ...evaluation,
+    score: String(capped),
+  };
+
+  if (quality.reasons.length > 0) {
+    const suffix = quality.reasons.join(" ");
+    updated.weaknesses = `${String(updated.weaknesses || "").trim()} ${suffix}`.trim();
+  }
+
+  return { evaluation: updated, quality };
 };
 
 const normalizeInterviewStep = (raw = {}, defaults = {}) => {
@@ -998,6 +1497,22 @@ const buildInterviewFinalReportFallback = (fullHistory = []) => {
   };
 };
 
+const computeAverageInterviewScore = (fullHistory = []) => {
+  const scores = fullHistory
+    .map((x) => Number.parseFloat(String(x?.evaluation?.score || "").replace(/[^\d.]/g, "")))
+    .filter((x) => Number.isFinite(x));
+  if (!scores.length) return 6;
+  return Math.round((scores.reduce((sum, x) => sum + x, 0) / scores.length) * 10) / 10;
+};
+
+const clampInterviewScoreToBand = (value, avg) => {
+  const num = Number.parseFloat(String(value || "").replace(/[^\d.]/g, ""));
+  const base = Number.isFinite(num) ? Math.round(num) : Math.round(avg);
+  const min = Math.max(1, Math.floor(avg - 2));
+  const max = Math.min(10, Math.ceil(avg + 2));
+  return String(Math.min(max, Math.max(min, base)));
+};
+
 const SEARCH_SUGGEST_CACHE = new Map();
 const SEARCH_SUGGEST_TTL_MS = 5 * 60 * 1000;
 const POPULAR_SEARCH_TOPICS = [
@@ -1214,11 +1729,15 @@ export const generateRoadmap = TryCatch(async (req, res) => {
   }
 
   const topic = topicRaw.slice(0, 80);
+  const languageProfile = getLanguageProfile(topicRaw);
+  const escapeRegExp = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const terms = compactQuery(topic)
     .split(" ")
     .filter((t) => t.length > 2)
     .slice(0, 5);
-  const regex = terms.length ? new RegExp(terms.join("|"), "i") : new RegExp(topic, "i");
+  const safeTerms = terms.map(escapeRegExp);
+  const regexSource = safeTerms.length ? safeTerms.join("|") : escapeRegExp(topic);
+  const regex = new RegExp(regexSource, "i");
 
   const matchedCourses = await Courses.find({
     $or: [
@@ -1264,9 +1783,11 @@ export const generateRoadmap = TryCatch(async (req, res) => {
     .sort((a, b) => b.score - a.score || String(b.course.createdAt || "").localeCompare(String(a.course.createdAt || "")))
     .map((x) => x.course);
 
-  let roadmap = buildRoadmapFallback({ topic, matchedCourses: rankedCourses });
+  let roadmap = languageProfile
+    ? buildLanguageRoadmap({ topic: languageProfile.canonical || topic, matchedCourses: rankedCourses, profile: languageProfile })
+    : buildRoadmapFallback({ topic, matchedCourses: rankedCourses });
 
-  if (process.env.GROQ_API_KEY) {
+  if (process.env.GROQ_API_KEY && !languageProfile) {
     const catalog = rankedCourses.map((c, index) => ({
       index,
       id: String(c._id),
@@ -1281,7 +1802,7 @@ export const generateRoadmap = TryCatch(async (req, res) => {
       {
         role: "system",
         content:
-          "You are SmartLearn roadmap planner. Return ONLY valid JSON object with keys: topic, summary, totalDurationWeeks, phases, recommendedCourseIndexes, learningTips. phases must be array of 4-6 items each with: title, focus, durationWeeks, goals(array), skills(array), outcomes(array), projects(array), resources(array), checkpoints(array). Ensure roadmap is chronological from beginner to advanced. recommendedCourseIndexes must reference provided catalog indexes only.",
+          "You are SmartLearn roadmap planner. Return ONLY valid JSON object with keys: topic, summary, totalDurationWeeks, phases, recommendedCourseIndexes, learningTips. phases must be an array of 4-6 items, each with: title (string), durationWeeks (number), phaseDescription (2-3 sentences), topics (array of 4-7 objects with {name, importance (optional string like 'IMPORTANT'), details (1-2 sentences)}), projects (array of 2-3 objects with {name, explanation (2-3 sentences), techStack (array of strings)}), commonPitfalls (array of 3-5 strings), checkpoints (array of 3-6 strings). Ensure roadmap is chronological from beginner to advanced. Use concrete, senior-level guidance, avoiding fluff. recommendedCourseIndexes must reference provided catalog indexes only.",
       },
       {
         role: "user",
@@ -1289,20 +1810,33 @@ export const generateRoadmap = TryCatch(async (req, res) => {
       },
     ];
 
-    try {
-      const output = await callGroq({
-        messages: roadmapPrompt,
-        temperature: 0.2,
-        max_tokens: 1400,
-      });
-      const candidate = extractJSONObjectString(output);
-      if (candidate) {
-        roadmap = JSON.parse(candidate);
+    let retries = 0;
+    let aiSuccess = false;
+    while (retries < 3 && !aiSuccess) {
+      try {
+        const output = await callGroq({
+          messages: roadmapPrompt,
+          temperature: 0.2 + (retries * 0.1),
+          max_tokens: 2200,
+        });
+        const candidate = extractJSONObjectString(output);
+        if (candidate) {
+          const parsed = JSON.parse(candidate);
+          if (Array.isArray(parsed.phases) && parsed.phases.length > 0) {
+            roadmap = parsed;
+            aiSuccess = true;
+          }
+        }
+      } catch (error) {
+        logEvent("error", "roadmap_generation_failed_groq", {
+          retry: retries,
+          message: error.message,
+        });
       }
-    } catch (error) {
-      logEvent("error", "roadmap_generation_failed_groq", {
-        message: error.message,
-      });
+      retries++;
+      if (!aiSuccess && retries < 3) {
+        await new Promise((r) => setTimeout(r, 1200));
+      }
     }
   }
 
@@ -1468,11 +2002,17 @@ export const runAIInterviewTurn = TryCatch(async (req, res) => {
     });
   }
 
+  const normalizedEvaluation = normalizeInterviewEvaluation(stepResult.evaluation);
+  const { evaluation: adjustedEvaluation } = applyAnswerQualityToEvaluation(
+    normalizedEvaluation,
+    candidateAnswer
+  );
+
   const evaluatedTurn = {
     question: currentQuestion,
     answer: candidateAnswer,
     difficulty: getInterviewDifficulty(currentQuestionNumber),
-    evaluation: normalizeInterviewEvaluation(stepResult.evaluation),
+    evaluation: adjustedEvaluation,
     follow_up: stepResult.follow_up,
   };
   const fullHistory = [...history, evaluatedTurn];
@@ -1498,9 +2038,34 @@ export const runAIInterviewTurn = TryCatch(async (req, res) => {
       finalReport = buildInterviewFinalReportFallback(fullHistory);
     }
 
+    const avgScore = computeAverageInterviewScore(fullHistory);
+    finalReport = {
+      ...finalReport,
+      technical_score: clampInterviewScoreToBand(finalReport?.technical_score, avgScore),
+      communication_score: clampInterviewScoreToBand(finalReport?.communication_score, avgScore),
+      confidence_score: clampInterviewScoreToBand(finalReport?.confidence_score, avgScore),
+    };
+
     stepResult.question = "Interview complete. Review your final report below.";
     stepResult.difficulty = getInterviewDifficulty(fullHistory.length);
     stepResult.follow_up = "Would you like a personalized 30-day preparation plan next?";
+
+    if (req.user?._id) {
+      try {
+        await Interview.create({
+          user: req.user._id,
+          topic: "AI Interview",
+          technical_score: Number(finalReport.technical_score) || 0,
+          communication_score: Number(finalReport.communication_score) || 0,
+          confidence_score: Number(finalReport.confidence_score) || 0,
+          strengths: Array.isArray(finalReport.strengths) ? finalReport.strengths : [],
+          weak_topics: Array.isArray(finalReport.weak_topics) ? finalReport.weak_topics : [],
+          recommendations: Array.isArray(finalReport.recommendations) ? finalReport.recommendations : [],
+        });
+      } catch (err) {
+        logEvent("error", "interview_save_failed", { message: err?.message });
+      }
+    }
   }
 
   logEvent("info", "ai_interview_turn_processed", {
@@ -1511,7 +2076,7 @@ export const runAIInterviewTurn = TryCatch(async (req, res) => {
 
   return res.json({
     question: stepResult.question,
-    evaluation: normalizeInterviewEvaluation(stepResult.evaluation),
+    evaluation: adjustedEvaluation,
     difficulty: stepResult.difficulty,
     follow_up: stepResult.follow_up,
     done,
@@ -1616,6 +2181,47 @@ export const loginUser = TryCatch(async (req, res) => {
 
   res.json({
     message: `Welcome back ${user.name}`,
+    token,
+    user: safeUser,
+  });
+});
+
+export const googleAuth = TryCatch(async (req, res) => {
+  const { tokenId } = req.body;
+  if (!tokenId) {
+    return res.status(400).json({ message: "Google token is required" });
+  }
+
+  const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+  
+  const ticket = await client.verifyIdToken({
+    idToken: tokenId,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+  
+  const { email, name, picture } = ticket.getPayload();
+  
+  let user = await User.findOne({ email });
+  
+  if (!user) {
+    // Generate a random password for Google-authenticated users
+    const password = await bcrypt.hash(email + process.env.Jwt_Sec + Date.now().toString(), 10);
+    user = await User.create({
+      name,
+      email,
+      photo: picture,
+      password,
+    });
+  }
+  
+  const token = jwt.sign({ _id: user._id }, process.env.Jwt_Sec, {
+    expiresIn: "15d",
+  });
+  
+  const safeUser = await User.findById(user._id).select("-password");
+  
+  res.json({
+    message: `Welcome ${user.name}`,
     token,
     user: safeUser,
   });
@@ -1788,7 +2394,14 @@ export const askChatbot = TryCatch(async (req, res) => {
     });
     const supportLinks = buildSupportLinksByQuestion(normalizedQuestion);
     const playbookMatch = findSupportPlaybookMatch(normalizedQuestion, intent);
-    const mergedLinks = dedupeLinks([...(links || []), ...(supportLinks || []), ...(playbookMatch?.links || [])]).slice(0, 8);
+    let mergedLinks = dedupeLinks([
+      ...(playbookMatch?.links || []),
+      ...(links || []),
+      ...(supportLinks || []),
+    ]).slice(0, 4);
+    if (!mergedLinks.length) {
+      mergedLinks = getDefaultLinksForIntent(intent, authUserContext).slice(0, 4);
+    }
     const suggestedQuestions = buildSuggestedQuestions({
       intent,
       question: normalizedQuestion,
@@ -1835,7 +2448,15 @@ export const askChatbot = TryCatch(async (req, res) => {
         userContext: authUserContext,
       });
     }
-    answer = String(answer || "").trim();
+    answer = sanitizeChatAnswer(answer);
+    if (!answer) {
+      answer = buildFallbackAgentAnswer({
+        question: normalizedQuestion,
+        intent,
+        playbookMatch,
+        userContext: authUserContext,
+      });
+    }
 
     logEvent("info", "chatbot_answer_success", {
       intent,
@@ -1945,5 +2566,12 @@ export const getTestHistory = TryCatch(async (req, res) => {
     attempts: (user.testHistory || []).sort(
       (a, b) => new Date(b.completedAt) - new Date(a.completedAt)
     ),
+  });
+});
+
+export const getInterviewHistory = TryCatch(async (req, res) => {
+  const interviews = await Interview.find({ user: req.user._id }).sort({ createdAt: -1 });
+  res.json({
+    interviews,
   });
 });

@@ -241,3 +241,145 @@ export const sendRoleUpdateMail = async (data) => {
     html,
   });
 };
+
+export const sendContactMail = async (data) => {
+  const transport = createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    auth: {
+      user: process.env.Gmail,
+      pass: process.env.Password,
+    },
+  });
+
+  const escapeHtml = (value) =>
+    String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.Gmail;
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Contact Message</title>
+</head>
+<body style="font-family: Arial, sans-serif; background:#f4f7fb; padding:20px;">
+  <div style="max-width:620px; margin:0 auto; background:white; border-radius:10px; padding:20px; border:1px solid #dbe7ff;">
+    <h2 style="margin-top:0; color:#1e3a8a;">New Contact Message</h2>
+    <p><strong>Name:</strong> ${escapeHtml(data.name)}</p>
+    <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+    <p><strong>Subject:</strong> ${escapeHtml(data.subject)}</p>
+    <p><strong>Message:</strong></p>
+    <p style="white-space:pre-wrap; margin-top:0;">${escapeHtml(data.message)}</p>
+    <p style="margin-top:20px; color:#6b7280;">Submitted from SmartLearn AI contact form.</p>
+  </div>
+</body>
+</html>`;
+
+  await transport.sendMail({
+    from: process.env.Gmail,
+    to: adminEmail,
+    subject: "SmartLearn AI - New Contact Message",
+    html,
+  });
+};
+
+export const sendContactReplyMail = async (data) => {
+  const transport = createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    auth: {
+      user: process.env.Gmail,
+      pass: process.env.Password,
+    },
+  });
+
+  const escapeHtml = (value) =>
+    String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  const subject = data.subject || "SmartLearn AI Support Reply";
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Support Reply</title>
+</head>
+<body style="font-family: Arial, sans-serif; background:#f4f7fb; padding:20px;">
+  <div style="max-width:620px; margin:0 auto; background:white; border-radius:10px; padding:20px; border:1px solid #dbe7ff;">
+    <h2 style="margin-top:0; color:#1e3a8a;">SmartLearn AI Support</h2>
+    <p>Hello ${escapeHtml(data.name)},</p>
+    <p style="white-space:pre-wrap; margin-top:0;">${escapeHtml(data.message)}</p>
+    <hr style="margin:20px 0; border:none; border-top:1px solid #e5e7eb;" />
+    <p style="color:#6b7280; font-size:0.9rem;">If you have more questions, reply to this email.</p>
+  </div>
+</body>
+</html>`;
+
+  await transport.sendMail({
+    from: process.env.Gmail,
+    to: data.email,
+    subject,
+    html,
+  });
+};
+
+export const sendNewsletterCampaignMail = async (data) => {
+  const transport = createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    auth: {
+      user: process.env.Gmail,
+      pass: process.env.Password,
+    },
+  });
+
+  const escapeHtml = (value) =>
+    String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  const subject = String(data.subject || "SmartLearn AI Newsletter").trim();
+  const bodyText = String(data.body || "").trim();
+  const paragraphs = bodyText
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  const htmlBody = paragraphs
+    .map((paragraph) => `<p style="margin:0 0 12px; line-height:1.6;">${escapeHtml(paragraph).replace(/\n/g, "<br />")}</p>`)
+    .join("");
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin:0; padding:20px; background:#f4f7fb; font-family:Arial, sans-serif; color:#111827;">
+  <div style="max-width:640px; margin:0 auto; background:#ffffff; border:1px solid #dbe7ff; border-radius:10px; padding:20px;">
+    <h2 style="margin:0 0 14px; color:#1d4ed8;">SmartLearn AI</h2>
+    ${htmlBody || "<p>No content provided.</p>"}
+    <hr style="margin:20px 0; border:none; border-top:1px solid #e5e7eb;" />
+    <p style="margin:0; font-size:12px; color:#6b7280;">You are receiving this because you subscribed to SmartLearn AI updates.</p>
+  </div>
+</body>
+</html>`;
+
+  await transport.sendMail({
+    from: process.env.Gmail,
+    to: data.to,
+    subject,
+    html,
+  });
+};

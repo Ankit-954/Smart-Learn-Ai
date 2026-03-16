@@ -6,7 +6,7 @@
 
 .student-dashboard h2 {
   margin: 0 0 14px;
-  color: #0f172a;
+  color: var(--text);
 }
 
 .student-dashboard .dashboard-content {

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { server } from "../../main";
+import { getTestHistory } from "../../utils/testHistoryCache";
 import "./progress.css";
 
 const Progress = ({ user }) => {
@@ -9,6 +10,7 @@ const Progress = ({ user }) => {
   const [error, setError] = useState("");
   const [courseProgress, setCourseProgress] = useState([]);
   const [testHistory, setTestHistory] = useState([]);
+  const [interviewHistory, setInterviewHistory] = useState([]);
 
   useEffect(() => {
     let active = true;
@@ -18,14 +20,13 @@ const Progress = ({ user }) => {
         const token = localStorage.getItem("token");
         if (!token) throw new Error("Please login to view progress.");
 
-        const localTests = JSON.parse(localStorage.getItem("testHistory") || "[]");
-        const safeLocalTests = Array.isArray(localTests) ? localTests : [];
+        const tests = await getTestHistory({ token, ttlMs: 60000 });
 
-        const testHistoryRes = await axios.get(`${server}/api/user/test-history`, {
+        const interviewRes = await axios.get(`${server}/api/user/interview-history`, {
           headers: { token },
         });
-        const serverTests = Array.isArray(testHistoryRes?.data?.attempts)
-          ? testHistoryRes.data.attempts
+        const serverInterviews = Array.isArray(interviewRes?.data?.interviews)
+          ? interviewRes.data.interviews
           : [];
 
         const { data } = await axios.get(`${server}/api/mycourse`, {
@@ -63,7 +64,8 @@ const Progress = ({ user }) => {
         );
 
         if (!active) return;
-        setTestHistory(serverTests.length ? serverTests : safeLocalTests);
+        setTestHistory(Array.isArray(tests) ? tests : []);
+        setInterviewHistory(serverInterviews);
         setCourseProgress(progressRows);
         setError("");
       } catch (err) {
@@ -98,14 +100,23 @@ const Progress = ({ user }) => {
         )
       : 0;
 
+    const interviewsAttempted = interviewHistory.length;
+    const avgInterviewScore = interviewsAttempted
+      ? Math.round(
+          interviewHistory.reduce((sum, i) => sum + ((Number(i.technical_score) + Number(i.communication_score) + Number(i.confidence_score)) / 30 * 100), 0) / interviewsAttempted
+        )
+      : 0;
+
     return {
       testsAttempted,
       testsPassed,
       avgTestScore,
       purchasedCourses,
       averageCourseCompletion,
+      interviewsAttempted,
+      avgInterviewScore,
     };
-  }, [testHistory, courseProgress]);
+  }, [testHistory, courseProgress, interviewHistory]);
 
   if (loading) {
     return (
@@ -150,6 +161,14 @@ const Progress = ({ user }) => {
             <h3>{stats.avgTestScore}%</h3>
           </div>
           <div className="metric-card">
+            <p>Mock Interviews</p>
+            <h3>{stats.interviewsAttempted}</h3>
+          </div>
+          <div className="metric-card">
+            <p>Avg Interview Score</p>
+            <h3>{stats.avgInterviewScore}%</h3>
+          </div>
+          <div className="metric-card">
             <p>Purchased Courses</p>
             <h3>{stats.purchasedCourses}</h3>
           </div>
@@ -160,7 +179,7 @@ const Progress = ({ user }) => {
         </div>
 
         <div className="progress-grid">
-          <section className="progress-card">
+          <section id="courses" className="progress-card">
             <div className="progress-card-head">
               <h2>Course Progress</h2>
               <Link to="/courses">Explore Courses</Link>
@@ -193,7 +212,7 @@ const Progress = ({ user }) => {
             )}
           </section>
 
-          <section className="progress-card">
+          <section id="tests" className="progress-card">
             <div className="progress-card-head">
               <h2>Recent Test Attempts</h2>
               <Link to="/test">Take New Test</Link>
@@ -220,6 +239,34 @@ const Progress = ({ user }) => {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </section>
+
+          <section id="interviews" className="progress-card">
+            <div className="progress-card-head">
+              <h2>Recent Mock Interviews</h2>
+              <Link to="/interview">Start Interview</Link>
+            </div>
+            {interviewHistory.length === 0 ? (
+              <p className="empty-row">No mock interviews completed yet.</p>
+            ) : (
+              <div className="test-list">
+                {interviewHistory.slice(0, 8).map((interview) => {
+                  const avg = Math.round((Number(interview.technical_score) + Number(interview.communication_score) + Number(interview.confidence_score)) / 3 * 10);
+                  return (
+                    <div className="test-item" key={interview._id}>
+                      <div>
+                        <h4>{interview.topic || "AI Interview"}</h4>
+                        <p>{new Date(interview.createdAt).toLocaleString()}</p>
+                      </div>
+                      <div className="test-score">
+                        <strong>{Math.round(avg / 10)}/10</strong>
+                        <span>{avg}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>

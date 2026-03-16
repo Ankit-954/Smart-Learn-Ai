@@ -15,6 +15,27 @@ const QUICK_PROMPTS = [
 
 const ChatbotWidget = () => {
   const navigate = useNavigate();
+
+  // Simple markdown renderer for chatbot messages
+  const renderMarkdown = (text) => {
+    if (!text) return null;
+    return text.split("\n").map((line, i) => {
+      // Bold: **text**
+      const parts = line.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return <strong key={j}>{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+      // Bullet points
+      const trimmed = line.trim();
+      if (trimmed.startsWith("• ") || trimmed.startsWith("- ") || /^\d+[\.\)]\s/.test(trimmed)) {
+        return <div key={i} style={{ paddingLeft: "8px", marginBottom: "3px" }}>{parts}</div>;
+      }
+      if (trimmed === "") return <br key={i} />;
+      return <div key={i} style={{ marginBottom: "4px" }}>{parts}</div>;
+    });
+  };
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("chat");
   const [input, setInput] = useState("");
@@ -23,7 +44,7 @@ const ChatbotWidget = () => {
   const [messages, setMessages] = useState([
     {
       from: "bot",
-      text: "Hi, I am SmartLearn assistant. Ask me any question.",
+      text: "Hi, I am SmartLearn assistant. Ask me about courses, tests, progress, or payments.",
     },
   ]);
   const messagesRef = useRef(null);
@@ -48,7 +69,7 @@ const ChatbotWidget = () => {
     setLoading(true);
 
     try {
-      const historyPayload = nextMessages
+      const historyPayload = messages
         .slice(-8)
         .map((m) => ({
           role: m.from === "bot" ? "assistant" : "user",
@@ -177,7 +198,7 @@ const ChatbotWidget = () => {
                     className={`chat-message ${m.from === "user" ? "user" : "bot"}`}
                     key={i}
                   >
-                    <div>{m.text}</div>
+                    <div>{m.from === "bot" ? renderMarkdown(m.text) : m.text}</div>
                     {m.from === "bot" && Array.isArray(m.links) && m.links.length > 0 && (
                       <div className="chat-link-list">
                         {m.links.map((link, idx) => (

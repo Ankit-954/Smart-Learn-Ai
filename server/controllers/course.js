@@ -91,6 +91,39 @@ export const getMyCourses = TryCatch(async (req, res) => {
   });
 });
 
+export const enrollFreeCourse = TryCatch(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  const course = await Courses.findById(req.params.id);
+
+  if (!course) {
+    return res.status(404).json({ message: "Course not found" });
+  }
+
+  const isFree = course.isFree || Number(course.price) <= 0;
+  if (!isFree) {
+    return res.status(400).json({ message: "This course is paid. Please purchase it." });
+  }
+
+  const alreadySubscribed = user.subscription.some(
+    (courseId) => String(courseId) === String(course._id)
+  );
+
+  if (!alreadySubscribed) {
+    user.subscription.push(course._id);
+    await user.save();
+    await Progress.findOneAndUpdate(
+      { course: course._id, user: req.user._id },
+      { $setOnInsert: { course: course._id, completedLectures: [], user: req.user._id } },
+      { upsert: true, new: true }
+    );
+  }
+
+  return res.status(200).json({
+    message: alreadySubscribed ? "You already have this course" : "Enrolled successfully",
+    course,
+  });
+});
+
 export const checkout = TryCatch(async (req, res) => {
   const user = await User.findById(req.user._id);
 
@@ -106,6 +139,10 @@ export const checkout = TryCatch(async (req, res) => {
     return res.status(400).json({
       message: "You already have this course",
     });
+  }
+
+  if (course.isFree || Number(course.price) <= 0) {
+    return res.status(400).json({ message: "This course is free. Please enroll instead." });
   }
 
   const options = {

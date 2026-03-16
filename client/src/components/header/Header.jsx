@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { FaSearch } from "react-icons/fa";
 import { HiOutlineMenuAlt3 } from "react-icons/hi";
+import { FiSun, FiMoon } from "react-icons/fi";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import "./header.css";
-import logos from "./logos.png"; // Import the logo image
+import logos from "./logos.png";
 import { CourseData } from "../../context/CourseContext";
+import { useTheme } from "../../context/ThemeContext";
 import { server } from "../../main";
 
 const QUICK_TOPICS = [
@@ -66,8 +68,7 @@ const normalizeSuggestion = (raw) => {
   };
 };
 
-const Header = ({ onToggleSidebar }) => {
-  const { courses } = CourseData();
+const TopSearchBar = ({ courses }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
@@ -293,6 +294,53 @@ const Header = ({ onToggleSidebar }) => {
   }, [location.pathname, location.search]);
 
   return (
+    <div className="search-box" ref={searchWrapRef}>
+      <FaSearch className="search-icon" />
+      <input
+        type="text"
+        placeholder="Search courses, skills, roadmaps..."
+        value={searchQuery}
+        onChange={(e) => {
+          setSearchQuery(e.target.value);
+          setIsSearchFocused(true);
+        }}
+        onFocus={() => setIsSearchFocused(true)}
+        onKeyDown={handleSearchKeyPress}
+      />
+      {isSearchFocused && (suggestions.length > 0 || isLoadingSuggestions) && (
+        <div className="search-suggestions">
+          {isLoadingSuggestions && (
+            <div className="search-suggestion-loading">Fetching suggestions...</div>
+          )}
+          {suggestions.map((suggestion, index) => (
+            <button
+              key={`${suggestion.type}-${suggestion.label}-${index}`}
+              type="button"
+              className={`search-suggestion-item ${
+                index === activeSuggestionIndex ? "active" : ""
+              }`}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                runSearch(suggestion.label, suggestion);
+              }}
+            >
+              <span>{suggestion.label}</span>
+              {suggestion.subtitle && (
+                <span className="search-suggestion-meta">{suggestion.subtitle}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const Header = ({ onToggleSidebar }) => {
+  const { courses } = CourseData();
+  const { theme, toggleTheme } = useTheme();
+
+  return (
     <header>
       <div className="logo">
         <Link to={"/"}>
@@ -300,53 +348,32 @@ const Header = ({ onToggleSidebar }) => {
         </Link>
       </div>
 
-      <div className="search-box" ref={searchWrapRef}>
-        <FaSearch className="search-icon" />
-        <input
-          type="text"
-          placeholder="Search courses, skills, roadmaps..."
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setIsSearchFocused(true);
-          }}
-          onFocus={() => setIsSearchFocused(true)}
-          onKeyDown={handleSearchKeyPress}
-        />
-        {isSearchFocused && (suggestions.length > 0 || isLoadingSuggestions) && (
-          <div className="search-suggestions">
-            {isLoadingSuggestions && (
-              <div className="search-suggestion-loading">Fetching suggestions...</div>
-            )}
-            {suggestions.map((suggestion, index) => (
-              <button
-                key={`${suggestion.type}-${suggestion.label}-${index}`}
-                type="button"
-                className={`search-suggestion-item ${
-                  index === activeSuggestionIndex ? "active" : ""
-                }`}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  runSearch(suggestion.label, suggestion);
-                }}
-              >
-                <span>{suggestion.label}</span>
-                {suggestion.subtitle && (
-                  <span className="search-suggestion-meta">{suggestion.subtitle}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <TopSearchBar courses={courses} />
 
       <div className="link">
-        <NavLink to={"/"}>Home</NavLink>
-        <NavLink to={"/courses"}>Courses</NavLink>
-        <NavLink to={"/progress"}>Progress</NavLink>
-        <NavLink to={"/test"}>Test</NavLink>
-        <NavLink to={"/interview"}>Interview</NavLink>
-        <NavLink to={"/reviews"}>Review</NavLink>
+        <div className="nav-group">
+          <NavLink to={"/"}>Home</NavLink>
+          <NavLink to={"/courses"}>Courses</NavLink>
+          <NavLink to={"/progress"}>Progress</NavLink>
+          <NavLink to={"/test"}>Test</NavLink>
+          <NavLink to={"/interview"}>Interview</NavLink>
+          <NavLink to={"/reviews"}>Review</NavLink>
+        </div>
+        <span className="nav-divider" aria-hidden="true" />
+        <div className="nav-group nav-group-secondary">
+          <NavLink to={"/about"}>About Us</NavLink>
+          <NavLink to={"/blog"}>Educational Blog</NavLink>
+          <NavLink to={"/careers"}>Careers</NavLink>
+        </div>
+        <button
+          type="button"
+          className="theme-toggle-btn"
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          title={theme === "dark" ? "Light mode" : "Dark mode"}
+        >
+          {theme === "dark" ? <FiSun /> : <FiMoon />}
+        </button>
         <button
           type="button"
           className="menu-toggle-btn"

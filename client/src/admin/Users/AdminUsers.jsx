@@ -5,6 +5,7 @@ import axios from "axios";
 import { server } from "../../main";
 import Layout from "../Utils/Layout";
 import toast from "react-hot-toast";
+import { AiOutlineDownload, AiOutlineClose } from "react-icons/ai";
 
 const AdminUsers = ({ user }) => {
   const navigate = useNavigate();
@@ -23,6 +24,15 @@ const AdminUsers = ({ user }) => {
     totalUsers: 0,
   });
   const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [courses, setCourses] = useState([]);
+  const [exportFilters, setExportFilters] = useState({ 
+    role: "all", 
+    dateRange: "all",
+    courseId: "",
+    hasTested: false,
+    hasReviewed: false
+  });
 
   async function fetchUsers() {
     setLoading(true);
@@ -51,8 +61,18 @@ const AdminUsers = ({ user }) => {
     }
   }
 
+  async function fetchCourses() {
+    try {
+      const { data } = await axios.get(`${server}/api/course/all`);
+      setCourses(data.courses || []);
+    } catch (error) {
+      console.log("Failed to load course list for filter", error);
+    }
+  }
+
   useEffect(() => {
     fetchUsers();
+    fetchCourses();
   }, [q, roleFilter, page, limit]);
 
   const updateRole = async (id, currentRole) => {
@@ -125,6 +145,56 @@ const AdminUsers = ({ user }) => {
     }
   };
 
+  const handleExportCSV = async () => {
+    try {
+      const params = { 
+        role: exportFilters.role, 
+        dateRange: exportFilters.dateRange,
+        courseId: exportFilters.courseId,
+        hasTested: exportFilters.hasTested,
+        hasReviewed: exportFilters.hasReviewed
+      };
+      const response = await axios.get(`${server}/api/users/export`, {
+        params,
+        headers: { token: localStorage.getItem("token") },
+        responseType: "blob", // Tell Axios to handle the binary file download
+      });
+
+      // Create a blob from the response and trigger browser download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `users_export_${new Date().getTime()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("CSV file downloaded successfully!");
+      setShowExportModal(false);
+    } catch (error) {
+      if (error.response && error.response.data) {
+        if (error.response.data instanceof Blob) {
+          error.response.data.text().then(text => {
+            try {
+              const errData = JSON.parse(text);
+              toast.error(errData.message || "Failed to export users data");
+            } catch {
+              toast.error("Failed to export users data");
+            }
+          });
+          return;
+        } else if (error.response.data.message) {
+          toast.error(error.response.data.message);
+          return;
+        }
+      }
+      toast.error("Failed to export users data");
+    }
+  };
+
   const allCurrentPageSelected =
     users.length > 0 && users.every((u) => selectedUserIds.includes(u._id));
 
@@ -132,8 +202,13 @@ const AdminUsers = ({ user }) => {
     <Layout>
       <div className="users">
         <div className="users-header">
-          <h1>All Users</h1>
-          <p>Manage platform roles and admin access.</p>
+          <div>
+            <h1>All Users</h1>
+            <p>Manage platform roles and admin access.</p>
+          </div>
+          <button className="common-btn export-btn" onClick={() => setShowExportModal(true)}>
+            <AiOutlineDownload size={20} /> Export CSV
+          </button>
         </div>
         <div className="users-toolbar">
           <input
@@ -250,8 +325,91 @@ const AdminUsers = ({ user }) => {
           </div>
         </div>
       </div>
+
+      {showExportModal && (
+        <div className="modal-overlay">
+          <div className="export-modal animation-scale-in">
+            <div className="modal-header">
+              <h2>Export Users Data</h2>
+              <button className="close-btn" onClick={() => setShowExportModal(false)}>
+                <AiOutlineClose />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="input-group">
+                <label>Filter by Role</label>
+                <select 
+                  value={exportFilters.role} 
+                  onChange={(e) => setExportFilters({ ...exportFilters, role: e.target.value })}
+                >
+                  <option value="all">All Roles</option>
+                  <option value="user">Users / Students Only</option>
+                  <option value="admin">Admins Only</option>
+                </select>
+              </div>
+
+              <div className="input-group">
+                <label>Filter by Joined Date</label>
+                <select 
+                  value={exportFilters.dateRange} 
+                  onChange={(e) => setExportFilters({ ...exportFilters, dateRange: e.target.value })}
+                >
+                  <option value="all">All Time</option>
+                  <option value="7">Last 7 Days</option>
+                  <option value="30">Last 30 Days</option>
+                  <option value="90">Last 90 Days</option>
+                </select>
+              </div>
+
+              <div className="input-group">
+                <label>Filter by Course Purchase</label>
+                <select 
+                  value={exportFilters.courseId} 
+                  onChange={(e) => setExportFilters({ ...exportFilters, courseId: e.target.value })}
+                >
+                  <option value="">Any Course / Skip</option>
+                  {courses.map(course => (
+                    <option key={course._id} value={course._id}>{course.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="export-checkbox-group">
+                <label className="custom-checkbox-label">
+                  <input 
+                    type="checkbox" 
+                    checked={exportFilters.hasTested}
+                    onChange={(e) => setExportFilters({ ...exportFilters, hasTested: e.target.checked })}
+                  />
+                  <span>Has Attempted AI Tests</span>
+                </label>
+                
+                <label className="custom-checkbox-label">
+                  <input 
+                    type="checkbox" 
+                    checked={exportFilters.hasReviewed}
+                    onChange={(e) => setExportFilters({ ...exportFilters, hasReviewed: e.target.checked })}
+                  />
+                  <span>Has Shared a Testimonial/Review</span>
+                </label>
+              </div>
+
+              <p className="export-note">
+                This will generate a CSV file compatible with Google Sheets and MS Excel containing name, email, role, and joined date.
+              </p>
+            </div>
+
+            <div className="modal-actions">
+              <button className="cancel-btn" onClick={() => setShowExportModal(false)}>Cancel</button>
+              <button className="common-btn" onClick={handleExportCSV}>Download CSV</button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
 
 export default AdminUsers;
+

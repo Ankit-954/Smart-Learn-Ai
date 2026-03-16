@@ -1,5 +1,5 @@
 import axios from "axios";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { server } from "../main";
 
 const CourseContext = createContext();
@@ -8,8 +8,10 @@ export const CourseContextProvider = ({ children }) => {
   const [courses, setCourses] = useState([]);
   const [course, setCourse] = useState(null);
   const [mycourse, setMyCourse] = useState([]);
+  const myCourseRequestRef = useRef(null);
+  const didInitRef = useRef(false);
 
-  async function fetchCourses() {
+  const fetchCourses = useCallback(async () => {
     try {
       const { data } = await axios.get(`${server}/api/course/all`);
 
@@ -17,18 +19,18 @@ export const CourseContextProvider = ({ children }) => {
     } catch (error) {
       console.log(error);
     }
-  }
+  }, []);
 
-  async function fetchCourse(id) {
+  const fetchCourse = useCallback(async (id) => {
     try {
       const { data } = await axios.get(`${server}/api/course/${id}`);
       setCourse(data.course);
     } catch (error) {
       console.log(error);
     }
-  }
+  }, []);
 
-  async function fetchMyCourse() {
+  const fetchMyCourse = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) {
       setMyCourse([]);
@@ -36,37 +38,59 @@ export const CourseContextProvider = ({ children }) => {
     }
 
     try {
-      const { data } = await axios.get(`${server}/api/mycourse`, {
-        headers: {
-          token,
-        },
-      });
-
-      setMyCourse(data.courses);
-    } catch (error) {
-      if (error?.response?.status === 401 || error?.response?.status === 403) {
-        setMyCourse([]);
-      } else {
-        console.log(error);
+      if (myCourseRequestRef.current) {
+        return myCourseRequestRef.current;
       }
+
+      const request = axios
+        .get(`${server}/api/mycourse`, {
+          headers: {
+            token,
+          },
+        })
+        .then(({ data }) => {
+          setMyCourse(data.courses);
+          return data;
+        })
+        .catch((error) => {
+          if (error?.response?.status === 401 || error?.response?.status === 403) {
+            setMyCourse([]);
+          } else {
+            console.log(error);
+          }
+          throw error;
+        })
+        .finally(() => {
+          myCourseRequestRef.current = null;
+        });
+
+      myCourseRequestRef.current = request;
+      return request;
+    } catch (error) {
+      return null;
     }
-  }
+  }, []);
 
   useEffect(() => {
+    if (didInitRef.current) return;
+    didInitRef.current = true;
     fetchCourses();
     fetchMyCourse();
-  }, []);
+  }, [fetchCourses, fetchMyCourse]);
+
+  const value = useMemo(
+    () => ({
+      courses,
+      fetchCourses,
+      fetchCourse,
+      course,
+      mycourse,
+      fetchMyCourse,
+    }),
+    [courses, fetchCourses, fetchCourse, course, mycourse, fetchMyCourse]
+  );
   return (
-    <CourseContext.Provider
-      value={{
-        courses,
-        fetchCourses,
-        fetchCourse,
-        course,
-        mycourse,
-        fetchMyCourse,
-      }}
-    >
+    <CourseContext.Provider value={value}>
       {children}
     </CourseContext.Provider>
   );

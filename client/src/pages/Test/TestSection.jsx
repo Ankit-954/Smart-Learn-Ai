@@ -6,7 +6,7 @@ import { server } from '../../main';
 
 const pendingQuestionRequests = new Map();
 const TOTAL_QUESTIONS = 10;
-const QUESTIONS_PER_DIFFICULTY = 12;
+const QUESTIONS_PER_DIFFICULTY = 6;
 const DIFFICULTY_LEVELS = ['easy', 'medium', 'hard'];
 
 const getDifficultyOrder = (preferred) => {

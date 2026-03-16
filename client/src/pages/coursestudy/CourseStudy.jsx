@@ -4,6 +4,17 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { CourseData } from "../../context/CourseContext";
 import CourseThumbnail from "../../components/coursethumbnail/CourseThumbnail";
 
+const formatCourseDuration = (duration, durationUnit) => {
+  const numericDuration = Number(duration);
+  const safeDuration = Number.isFinite(numericDuration) && numericDuration > 0 ? numericDuration : 0;
+  const normalizedUnit = ["day", "week", "month"].includes(String(durationUnit || "").toLowerCase())
+    ? String(durationUnit).toLowerCase()
+    : "week";
+  const unitLabel = safeDuration === 1 ? normalizedUnit : `${normalizedUnit}s`;
+
+  return `${safeDuration} ${unitLabel}`;
+};
+
 const CourseStudy = ({ user }) => {
   const params = useParams();
 
@@ -39,7 +50,9 @@ const CourseStudy = ({ user }) => {
 
               <div className="study-meta">
                 <span className="meta-pill">Instructor: {course.createdBy}</span>
-                <span className="meta-pill">Duration: {course.duration} weeks</span>
+                <span className="meta-pill">
+                  Duration: {formatCourseDuration(course.duration, course.durationUnit)}
+                </span>
               </div>
 
               <Link to={`/lectures/${course._id}`} className="study-cta">

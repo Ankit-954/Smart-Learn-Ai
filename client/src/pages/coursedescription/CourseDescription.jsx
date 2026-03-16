@@ -9,6 +9,17 @@ import { UserData } from "../../context/UserContext";
 import Loading from "../../components/loading/Loading";
 import CourseThumbnail from "../../components/coursethumbnail/CourseThumbnail";
 
+const formatCourseDuration = (duration, durationUnit) => {
+  const numericDuration = Number(duration);
+  const safeDuration = Number.isFinite(numericDuration) && numericDuration > 0 ? numericDuration : 0;
+  const normalizedUnit = ["day", "week", "month"].includes(String(durationUnit || "").toLowerCase())
+    ? String(durationUnit).toLowerCase()
+    : "week";
+  const unitLabel = safeDuration === 1 ? normalizedUnit : `${normalizedUnit}s`;
+
+  return `${safeDuration} ${unitLabel}`;
+};
+
 const CourseDescription = ({ user }) => {
   const params = useParams();
   const navigate = useNavigate();
@@ -22,6 +33,32 @@ const CourseDescription = ({ user }) => {
   useEffect(() => {
     fetchCourse(params.id);
   }, [params.id]);
+
+  const enrollFreeHandler = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Please login first");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data } = await axios.post(
+        `${server}/api/course/enroll/${params.id}`,
+        {},
+        { headers: { token } }
+      );
+      await fetchUser();
+      await fetchCourses();
+      await fetchMyCourse();
+      toast.success(data.message);
+      setLoading(false);
+      navigate(`/course/study/${params.id}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Unable to enroll");
+      setLoading(false);
+    }
+  };
 
   const checkoutHandler = async () => {
     const token = localStorage.getItem("token");
@@ -143,13 +180,17 @@ const CourseDescription = ({ user }) => {
                 <div className="course-info">
                   <h2>{course.title}</h2>
                   <p>Instructor: {course.createdBy}</p>
-                  <p>Duration: {course.duration} weeks</p>
+                  <p>Duration: {formatCourseDuration(course.duration, course.durationUnit)}</p>
                 </div>
               </div>
 
               <p>{course.description}</p>
 
-              <p>Let's get started with course At ₹{course.price}</p>
+              <p>
+                {course.isFree || Number(course.price) <= 0
+                  ? "This course is free."
+                  : `Let's get started with course at Rs ${course.price}`}
+              </p>
 
               {user && user.subscription?.includes(course._id) ? (
                 <button
@@ -159,9 +200,17 @@ const CourseDescription = ({ user }) => {
                   Study
                 </button>
               ) : (
-                <button onClick={checkoutHandler} className="common-btn">
-                  Buy Now
-                </button>
+                <>
+                  {course.isFree || Number(course.price) <= 0 ? (
+                    <button onClick={enrollFreeHandler} className="common-btn">
+                      Enroll Free
+                    </button>
+                  ) : (
+                    <button onClick={checkoutHandler} className="common-btn">
+                      Buy Now
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -172,3 +221,5 @@ const CourseDescription = ({ user }) => {
 };
 
 export default CourseDescription;
+
+

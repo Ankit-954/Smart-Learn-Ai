@@ -54,3 +54,13 @@ export const uploadProfileImage = multer({
   storage,
   fileFilter: imageFileFilter,
 }).single("photo");
+
+export const uploadBlogImage = multer({
+  storage,
+  fileFilter: imageFileFilter,
+}).single("image");
+
+export const uploadAboutImage = multer({
+  storage,
+  fileFilter: imageFileFilter,
+}).single("image");

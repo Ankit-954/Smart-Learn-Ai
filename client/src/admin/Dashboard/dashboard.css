@@ -7,13 +7,13 @@
 .admin-dashboard-header h1 {
   margin: 0;
   font-size: clamp(1.4rem, 3vw, 2.1rem);
-  color: #0f172a;
+  color: var(--text);
   letter-spacing: -0.01em;
 }
 
 .admin-dashboard-header p {
   margin: 6px 0 0;
-  color: #475569;
+  color: var(--muted);
 }
 
 .stats-grid {
@@ -23,16 +23,22 @@
 }
 
 .stat-card {
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
   border-radius: 18px;
   padding: 18px;
-  box-shadow: 0 18px 35px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-3px);
 }
 
 .stat-label {
   margin: 0 0 8px;
-  color: #475569;
+  color: var(--muted);
   font-weight: 600;
 }
 
@@ -40,7 +46,7 @@
   margin: 0;
   font-size: clamp(1.5rem, 4vw, 2.4rem);
   line-height: 1;
-  color: #0f766e;
+  color: var(--success);
   font-weight: 800;
 }
 

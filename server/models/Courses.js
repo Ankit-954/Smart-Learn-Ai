@@ -18,9 +18,18 @@ const schema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  isFree: {
+    type: Boolean,
+    default: false,
+  },
   duration: {
     type: Number,
     required: true,
+  },
+  durationUnit: {
+    type: String,
+    enum: ["day", "week", "month"],
+    default: "week",
   },
   category: {
     type: String,
