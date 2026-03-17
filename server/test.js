@@ -1,6 +1,12 @@
 import axios from 'axios';
+
 const url = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
-const key = 'AIzaSyAZHrzwwmXcQOw6L5PddhajLGpsyEAsEN0';
+const key = process.env.GEMINI_API_KEY;
+
+if (!key) {
+  throw new Error('Missing GEMINI_API_KEY environment variable');
+}
+
 const prompt = [
   { role: 'system', content: `You are the Lead Master Curriculum Designer for SmartLearn. Your job is to generate a comprehensive, actionable learning roadmap for software engineers based on their query.
 
