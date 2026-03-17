@@ -11,16 +11,26 @@ import { globalLimiter, aiLimiter } from "./middlewares/rateLimiter.js";
 
 dotenv.config();
 
-const REQUIRED_ENV_VARS = ["GROQ_API_KEY", "GEMINI_API_KEY", "Razorpay_Key", "Razorpay_Secret"];
-const missingEnvVars = REQUIRED_ENV_VARS.filter((name) => !process.env[name]);
+const RAZORPAY_KEY = process.env.Razorpay_Key || process.env.RAZORPAY_KEY_ID;
+const RAZORPAY_SECRET = process.env.Razorpay_Secret || process.env.RAZORPAY_SECRET;
+
+const REQUIRED_ENV_VARS = [
+  ["GROQ_API_KEY"],
+  ["GEMINI_API_KEY"],
+  ["Razorpay_Key", "RAZORPAY_KEY_ID"],
+  ["Razorpay_Secret", "RAZORPAY_SECRET"],
+];
+const missingEnvVars = REQUIRED_ENV_VARS
+  .filter((names) => !names.some((name) => process.env[name]))
+  .map((names) => names.join(" or "));
 if (missingEnvVars.length > 0) {
   throw new Error(`Missing required env vars: ${missingEnvVars.join(", ")}`);
 }
 
 // Initialize Razorpay instance
 export const instance = new Razorpay({
-  key_id: process.env.Razorpay_Key,
-  key_secret: process.env.Razorpay_Secret,
+  key_id: RAZORPAY_KEY,
+  key_secret: RAZORPAY_SECRET,
 });
 
 const app = express();

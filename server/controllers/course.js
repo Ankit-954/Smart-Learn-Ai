@@ -7,6 +7,9 @@ import crypto from "crypto";
 import { Payment } from "../models/Payment.js";
 import { Progress } from "../models/Progress.js";
 
+const RAZORPAY_KEY = process.env.Razorpay_Key || process.env.RAZORPAY_KEY_ID;
+const RAZORPAY_SECRET = process.env.Razorpay_Secret || process.env.RAZORPAY_SECRET;
+
 const logEvent = (level, event, meta = {}) => {
   const line = JSON.stringify({
     ts: new Date().toISOString(),
@@ -171,7 +174,7 @@ export const checkout = TryCatch(async (req, res) => {
   res.status(201).json({
     order,
     course,
-    key: process.env.Razorpay_Key,
+    key: RAZORPAY_KEY,
   });
 });
 
@@ -214,7 +217,7 @@ export const paymentVerification = TryCatch(async (req, res) => {
   const body = razorpay_order_id + "|" + razorpay_payment_id;
 
   const expectedSignature = crypto
-    .createHmac("sha256", process.env.Razorpay_Secret)
+    .createHmac("sha256", RAZORPAY_SECRET)
     .update(body)
     .digest("hex");
 
