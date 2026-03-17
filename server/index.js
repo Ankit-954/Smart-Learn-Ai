@@ -41,8 +41,19 @@ import { razorpayWebhook } from "./controllers/course.js";
 app.post("/api/razorpay/webhook", express.raw({ type: "application/json" }), razorpayWebhook);
 
 // CORS configuration — reads from env for production, falls back to localhost for dev
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization", "token"],
 };

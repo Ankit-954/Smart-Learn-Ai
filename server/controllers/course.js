@@ -354,12 +354,23 @@ export const razorpayWebhook = async (req, res) => {
 };
 
 export const addProgress = TryCatch(async (req, res) => {
-  const progress = await Progress.findOne({
+  let progress = await Progress.findOne({
     user: req.user._id,
     course: req.query.course,
   });
 
   const { lectureId } = req.query;
+  if (!lectureId) {
+    return res.status(400).json({ message: "lectureId is required" });
+  }
+
+  if (!progress) {
+    progress = await Progress.create({
+      user: req.user._id,
+      course: req.query.course,
+      completedLectures: [],
+    });
+  }
 
   if (progress.completedLectures.includes(lectureId)) {
     return res.json({
@@ -377,23 +388,23 @@ export const addProgress = TryCatch(async (req, res) => {
 });
 
 export const getYourProgress = TryCatch(async (req, res) => {
-  const progress = await Progress.find({
+  const progress = await Progress.findOne({
     user: req.user._id,
     course: req.query.course,
   });
 
-  if (!progress) return res.status(404).json({ message: "null" });
-
   const allLectures = (await Lecture.find({ course: req.query.course })).length;
 
-  const completedLectures = progress[0].completedLectures.length;
+  const completedLectures = progress?.completedLectures?.length || 0;
 
-  const courseProgressPercentage = (completedLectures * 100) / allLectures;
+  const courseProgressPercentage = allLectures > 0
+    ? (completedLectures * 100) / allLectures
+    : 0;
 
   res.json({
     courseProgressPercentage,
     completedLectures,
     allLectures,
-    progress,
+    progress: progress || null,
   });
 });
