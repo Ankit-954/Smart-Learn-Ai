@@ -3,11 +3,18 @@ import axios from "axios";
 import "./contact.css";
 import { server } from "../../main";
 import { AiOutlineMail, AiOutlinePhone, AiOutlineEnvironment, AiOutlineLoading3Quarters } from "react-icons/ai";
+import { usePageSeo } from "../../utils/usePageSeo";
 
 const Contact = () => {
   const [formData, setFormData] = useState({ name: "", email: "", subject: "", message: "" });
   const [status, setStatus] = useState("idle"); // idle, loading, success, error
   const [errorMessage, setErrorMessage] = useState("");
+
+  usePageSeo({
+    title: "Contact",
+    description: "Contact SmartLearn AI for support, questions, collaborations, or product inquiries.",
+    canonicalPath: "/contact",
+  });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

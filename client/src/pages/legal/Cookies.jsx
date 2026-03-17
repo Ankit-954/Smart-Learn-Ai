@@ -1,7 +1,14 @@
 import React from "react";
 import "./legal.css";
+import { usePageSeo } from "../../utils/usePageSeo";
 
 const Cookies = () => {
+  usePageSeo({
+    title: "Cookie Policy",
+    description: "Read the SmartLearn AI Cookie Policy to understand how authentication, preferences, and performance-related data are stored.",
+    canonicalPath: "/cookies",
+  });
+
   return (
     <div className="legal-page anim-fade-up">
       <div className="legal-container">

@@ -1,7 +1,14 @@
 import React from "react";
 import "./legal.css";
+import { usePageSeo } from "../../utils/usePageSeo";
 
 const Terms = () => {
+  usePageSeo({
+    title: "Terms of Service",
+    description: "Read the SmartLearn AI Terms of Service governing account usage, subscriptions, AI interactions, and platform rules.",
+    canonicalPath: "/terms",
+  });
+
   return (
     <div className="legal-page anim-fade-up">
       <div className="legal-container">

@@ -4,10 +4,17 @@ import { server } from "../../main";
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import * as Icons from "react-icons/fa"; // Import all FontAwesome icons for dynamic rendering
 import "./about.css";
+import { usePageSeo } from "../../utils/usePageSeo";
 
 const About = () => {
   const [aboutData, setAboutData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  usePageSeo({
+    title: "About",
+    description: "Learn about SmartLearn AI, our mission, our learning approach, and the team building practical AI-powered education.",
+    canonicalPath: "/about",
+  });
 
   useEffect(() => {
     fetchAboutData();

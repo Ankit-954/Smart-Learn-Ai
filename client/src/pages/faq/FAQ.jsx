@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "./faq.css";
 import { AiOutlinePlus, AiOutlineMinus } from "react-icons/ai";
+import { usePageSeo } from "../../utils/usePageSeo";
 
 const faqs = [
   {
@@ -27,6 +28,12 @@ const faqs = [
 
 const FAQ = () => {
   const [activeIndex, setActiveIndex] = useState(null);
+
+  usePageSeo({
+    title: "FAQ",
+    description: "Find answers about SmartLearn AI courses, certificates, mock interviews, tests, and personalized roadmaps.",
+    canonicalPath: "/faq",
+  });
 
   const toggleFAQ = (index) => {
     setActiveIndex(activeIndex === index ? null : index);

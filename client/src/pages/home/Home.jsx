@@ -8,10 +8,17 @@ import ChatbotWidget from "../../components/chatbot/ChatbotWidget";
 import { CourseData } from "../../context/CourseContext";
 import CourseCard from "../../components/coursecard/CourseCard";
 import { FaArrowRightLong } from "react-icons/fa6";
+import { usePageSeo } from "../../utils/usePageSeo";
 
 const Home = () => {
   const navigate = useNavigate();
   const { courses } = CourseData();
+
+  usePageSeo({
+    title: "AI Learning Platform",
+    description: "SmartLearn AI offers career-focused courses, AI mock interviews, domain tests, roadmaps, and guided learning for modern tech skills.",
+    canonicalPath: "/",
+  });
 
   const topCourses = useMemo(() => {
     const list = Array.isArray(courses) ? courses : [];

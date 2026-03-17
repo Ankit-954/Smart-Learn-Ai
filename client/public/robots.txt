@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin/
+Disallow: /account
+Disallow: /progress
+Disallow: /login
+Disallow: /register
+Disallow: /verify
+Disallow: /forgot
+Disallow: /reset-password/
+Disallow: /payment-success/
+Disallow: /course/study/
+Disallow: /lectures/
+Disallow: /interview
+Disallow: /reviews
+
+Sitemap: https://smart-learn-ai-olive.vercel.app/sitemap.xml

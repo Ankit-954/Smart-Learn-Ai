@@ -4,6 +4,7 @@ import { server } from "../../main";
 import "./blog.css";
 import { Link } from "react-router-dom";
 import { AiOutlineClockCircle, AiOutlineUser, AiOutlineCheckCircle, AiOutlineLoading3Quarters } from "react-icons/ai";
+import { usePageSeo } from "../../utils/usePageSeo";
 
 // Fallback posts if the DB is completely empty (for immediate visual feedback)
 const fallbackPosts = [
@@ -28,6 +29,11 @@ const fallbackPosts = [
 const Blog = () => {
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
+  usePageSeo({
+    title: "Blog",
+    description: "Read SmartLearn AI articles on learning, technology, careers, AI, and modern software development.",
+    canonicalPath: "/blog",
+  });
 
   const [email, setEmail] = useState("");
   const [subStatus, setSubStatus] = useState("idle");

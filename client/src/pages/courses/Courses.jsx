@@ -3,10 +3,16 @@ import "./courses.css";
 import { CourseData } from "../../context/CourseContext";
 import CourseCard from "../../components/coursecard/CourseCard";
 import { UserData } from "../../context/UserContext";
+import { usePageSeo } from "../../utils/usePageSeo";
 
 const Courses = () => {
   const { courses } = CourseData();
   const { user, isAuth } = UserData();
+  usePageSeo({
+    title: "Courses",
+    description: "Browse SmartLearn AI courses by stream, level, subject, and pricing to find the right path for your learning goals.",
+    canonicalPath: "/courses",
+  });
   const [query, setQuery] = useState("");
   const [streamFilter, setStreamFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");

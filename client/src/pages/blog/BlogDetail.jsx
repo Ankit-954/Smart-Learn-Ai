@@ -4,12 +4,20 @@ import axios from "axios";
 import { server } from "../../main";
 import "./blogDetail.css";
 import { AiOutlineArrowLeft, AiOutlineClockCircle, AiOutlineUser, AiOutlineLoading3Quarters } from "react-icons/ai";
+import { usePageSeo } from "../../utils/usePageSeo";
 
 const BlogDetail = () => {
   const { id } = useParams();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  usePageSeo({
+    title: post?.title || "Blog",
+    description: post?.excerpt || "Read SmartLearn AI insights on technology, learning, and career growth.",
+    canonicalPath: `/blog/${id}`,
+    robots: error ? "noindex, nofollow" : "index, follow",
+  });
 
   useEffect(() => {
     const fetchPost = async () => {

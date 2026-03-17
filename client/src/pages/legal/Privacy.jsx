@@ -1,7 +1,14 @@
 import React from "react";
 import "./legal.css";
+import { usePageSeo } from "../../utils/usePageSeo";
 
 const Privacy = () => {
+  usePageSeo({
+    title: "Privacy Policy",
+    description: "Read the SmartLearn AI Privacy Policy to understand how personal data, account data, and AI interaction data are handled.",
+    canonicalPath: "/privacy",
+  });
+
   return (
     <div className="legal-page anim-fade-up">
       <div className="legal-container">

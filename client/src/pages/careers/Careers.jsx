@@ -3,10 +3,17 @@ import "./careers.css";
 import { AiOutlineTeam, AiOutlineTrophy, AiOutlineRocket } from "react-icons/ai";
 import axios from "axios";
 import { server } from "../../main";
+import { usePageSeo } from "../../utils/usePageSeo";
 
 const Careers = () => {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  usePageSeo({
+    title: "Careers",
+    description: "Explore open roles at SmartLearn AI and join the team shaping AI-powered learning experiences.",
+    canonicalPath: "/careers",
+  });
 
   useEffect(() => {
     const fetchActiveJobs = async () => {
