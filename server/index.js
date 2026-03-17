@@ -16,9 +16,6 @@ const missingEnvVars = REQUIRED_ENV_VARS.filter((name) => !process.env[name]);
 if (missingEnvVars.length > 0) {
   throw new Error(`Missing required env vars: ${missingEnvVars.join(", ")}`);
 }
-if (process.env.NODE_ENV === "production" && String(process.env.Razorpay_Key).startsWith("rzp_test_")) {
-  throw new Error("Production cannot run with Razorpay test key");
-}
 
 // Initialize Razorpay instance
 export const instance = new Razorpay({
