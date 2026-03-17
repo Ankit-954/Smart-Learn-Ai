@@ -32,6 +32,12 @@ const About = () => {
     return <IconComponent />;
   };
 
+  const resolveImage = (src) => {
+    if (!src) return "";
+    if (/^https?:\/\//i.test(src)) return src;
+    return `${server}/${src}`;
+  };
+
   if (loading) {
     return (
       <div className="about-loading">
@@ -57,7 +63,7 @@ const About = () => {
         </div>
         {hero?.bannerImage && (
           <div className="hero-image-wrapper animation-scale-in">
-            <img src={`http://localhost:5000/${hero.bannerImage}`} alt="Hero Banner" className="hero-banner" />
+            <img src={resolveImage(hero.bannerImage)} alt="Hero Banner" className="hero-banner" />
           </div>
         )}
       </section>
@@ -87,7 +93,7 @@ const About = () => {
             </div>
             {mission?.image && (
               <div className="mv-img">
-                <img src={`http://localhost:5000/${mission.image}`} alt="Our Mission" />
+                <img src={resolveImage(mission.image)} alt="Our Mission" />
               </div>
             )}
           </div>
@@ -101,7 +107,7 @@ const About = () => {
             </div>
             {vision?.image && (
               <div className="mv-img">
-                <img src={`http://localhost:5000/${vision.image}`} alt="Our Vision" />
+                <img src={resolveImage(vision.image)} alt="Our Vision" />
               </div>
             )}
           </div>
@@ -137,7 +143,7 @@ const About = () => {
             </div>
             {approach?.image && (
               <div className="approach-img">
-                <img src={`http://localhost:5000/${approach.image}`} alt="Learning Approach" />
+                <img src={resolveImage(approach.image)} alt="Learning Approach" />
               </div>
             )}
           </div>
@@ -156,7 +162,7 @@ const About = () => {
               <div key={member.id || idx} className="team-card card-3d animation-fade-up" style={{ animationDelay: `${idx * 0.1}s` }}>
                 <div className="team-img-wrapper">
                   {member.image ? (
-                    <img src={`http://localhost:5000/${member.image}`} alt={member.name} />
+                    <img src={resolveImage(member.image)} alt={member.name} />
                   ) : (
                     <div className="team-placeholder"><Icons.FaUserAlt /></div>
                   )}

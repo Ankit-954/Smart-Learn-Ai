@@ -34,6 +34,7 @@ export const instance = new Razorpay({
 });
 
 const app = express();
+app.set("trust proxy", 1);
 
 // Razorpay webhook must receive raw body for signature verification.
 import { razorpayWebhook } from "./controllers/course.js";

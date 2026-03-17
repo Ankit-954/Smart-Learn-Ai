@@ -11,6 +11,7 @@ const AdminBlog = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [brokenImages, setBrokenImages] = useState({});
   
   const [formData, setFormData] = useState({
     title: "",
@@ -103,6 +104,12 @@ const AdminBlog = () => {
     }
   };
 
+  const resolveImage = (src) => {
+    if (!src) return "";
+    if (/^https?:\/\//i.test(src)) return src;
+    return `${server}/${src}`;
+  };
+
   return (
     <Layout>
       <div className="admin-blog-page">
@@ -123,7 +130,17 @@ const AdminBlog = () => {
               blogs.map((blog) => (
                 <div key={blog._id} className="admin-blog-card">
                   <div className="img-wrapper">
-                    <img src={`${server}/${blog.image}`} alt={blog.title} />
+                    {brokenImages[blog._id] || !blog.image ? (
+                      <div className="admin-blog-image-fallback">Image unavailable</div>
+                    ) : (
+                      <img
+                        src={resolveImage(blog.image)}
+                        alt={blog.title}
+                        onError={() =>
+                          setBrokenImages((prev) => ({ ...prev, [blog._id]: true }))
+                        }
+                      />
+                    )}
                     {!blog.isPublished && <span className="draft-badge">Draft</span>}
                   </div>
                   <div className="admin-blog-info">
@@ -131,7 +148,7 @@ const AdminBlog = () => {
                     <p className="admin-blog-meta">
                       {blog.category} • {new Date(blog.createdAt).toLocaleDateString()}
                     </p>
-                    <button onClick={() => handleDelete(blog._id)} className="delete-btn">
+                    <button onClick={() => handleDelete(blog._id)} className="admin-blog-delete-btn">
                       <AiOutlineDelete /> Delete
                     </button>
                   </div>

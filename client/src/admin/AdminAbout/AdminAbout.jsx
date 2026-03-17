@@ -152,6 +152,12 @@ const AdminAbout = () => {
     setAboutData((prev) => ({ ...prev, [section]: newArray }));
   };
 
+  const resolveImage = (src) => {
+    if (!src) return "";
+    if (/^https?:\/\//i.test(src)) return src;
+    return `${server}/${src}`;
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -178,7 +184,7 @@ const AdminAbout = () => {
             <div className="input-group">
               <label>Banner Image</label>
               {aboutData.hero?.bannerImage && (
-                <img src={`http://localhost:5000/${aboutData.hero.bannerImage}`} alt="Hero Banner" className="img-preview-small" />
+                <img src={resolveImage(aboutData.hero.bannerImage)} alt="Hero Banner" className="img-preview-small" />
               )}
               <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "hero", "bannerImage")} />
             </div>
@@ -202,7 +208,7 @@ const AdminAbout = () => {
             <h3>Mission</h3>
             <div className="input-group">
               <label>Mission Image</label>
-              {aboutData.mission?.image && <img src={`http://localhost:5000/${aboutData.mission.image}`} alt="Mission" className="img-preview-small" />}
+              {aboutData.mission?.image && <img src={resolveImage(aboutData.mission.image)} alt="Mission" className="img-preview-small" />}
               <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "mission", "image")} />
             </div>
             <div className="input-group">
@@ -213,7 +219,7 @@ const AdminAbout = () => {
             <h3>Vision</h3>
             <div className="input-group">
               <label>Vision Image</label>
-              {aboutData.vision?.image && <img src={`http://localhost:5000/${aboutData.vision.image}`} alt="Vision" className="img-preview-small" />}
+              {aboutData.vision?.image && <img src={resolveImage(aboutData.vision.image)} alt="Vision" className="img-preview-small" />}
               <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "vision", "image")} />
             </div>
             <div className="input-group">
@@ -258,7 +264,7 @@ const AdminAbout = () => {
                   <div className="delete-row"><AiOutlineDelete onClick={() => removeArrayItem("team", idx)} className="delete-icon" /></div>
                   <div className="input-group">
                     <label>Profile Image</label>
-                    {member.image && <img src={`http://localhost:5000/${member.image}`} alt={member.name} className="team-preview-small" />}
+                    {member.image && <img src={resolveImage(member.image)} alt={member.name} className="team-preview-small" />}
                     <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, "team", "image", idx)} />
                   </div>
                   <div className="input-group"><label>Name</label><input type="text" value={member.name} onChange={(e) => handleArrayChange(e, "team", idx, "name")} /></div>
