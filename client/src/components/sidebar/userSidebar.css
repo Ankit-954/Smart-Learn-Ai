@@ -26,6 +26,7 @@
   box-shadow: -20px 0 45px rgba(2, 6, 23, 0.1);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   transform: translateX(105%);
   transition: transform 260ms ease, background-color 0.3s ease;
   z-index: 40;
@@ -79,7 +80,28 @@
 .user-side-nav {
   padding: 12px 10px 8px;
   display: grid;
+  gap: 14px;
+}
+
+.user-side-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 10px;
+}
+
+.user-side-section {
+  display: grid;
   gap: 4px;
+}
+
+.user-side-section-title {
+  margin: 0;
+  padding: 0 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .user-side-link {
@@ -190,5 +212,15 @@
     top: 0;
     height: 100vh;
     width: min(290px, 84vw);
+  }
+}
+
+@media (max-width: 520px) {
+  .user-side-drawer {
+    width: min(360px, 100vw);
+  }
+
+  .user-side-stats {
+    grid-template-columns: 1fr;
   }
 }

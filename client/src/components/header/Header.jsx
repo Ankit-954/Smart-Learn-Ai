@@ -339,9 +339,41 @@ const TopSearchBar = ({ courses }) => {
 const Header = ({ onToggleSidebar }) => {
   const { courses } = CourseData();
   const { theme, toggleTheme } = useTheme();
+  const headerRef = useRef(null);
+
+  useEffect(() => {
+    const headerEl = headerRef.current;
+    if (!headerEl) return;
+
+    const syncHeaderHeight = () => {
+      const height = Math.ceil(headerEl.getBoundingClientRect().height);
+      document.documentElement.style.setProperty("--header-height", `${height}px`);
+    };
+
+    syncHeaderHeight();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", syncHeaderHeight);
+      return () => {
+        window.removeEventListener("resize", syncHeaderHeight);
+      };
+    }
+
+    const observer = new ResizeObserver(() => {
+      syncHeaderHeight();
+    });
+
+    observer.observe(headerEl);
+    window.addEventListener("resize", syncHeaderHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncHeaderHeight);
+    };
+  }, []);
 
   return (
-    <header>
+    <header ref={headerRef}>
       <div className="logo">
         <Link to={"/"}>
           <img src={logos} alt="PathPro" className="logo-image" />

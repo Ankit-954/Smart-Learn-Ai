@@ -7,9 +7,14 @@ import {
   AiOutlineClose,
   AiOutlineQuestionCircle,
   AiOutlineMail,
+  AiOutlineBook,
+  AiOutlineRead,
 } from "react-icons/ai";
 import { FaUserAlt } from "react-icons/fa";
 import { MdDashboard } from "react-icons/md";
+import { RiRoadMapLine } from "react-icons/ri";
+import { BiBarChartAlt2 } from "react-icons/bi";
+import { TbClipboardText } from "react-icons/tb";
 import { RiProfileLine } from "react-icons/ri";
 import toast from "react-hot-toast";
 import { UserData } from "../../context/UserContext";
@@ -48,6 +53,7 @@ const UserSidebar = ({ isOpen, onClose, isAuth, user }) => {
   const activityBasePath = "/progress";
   const testsPath = `${activityBasePath}#tests`;
   const coursesPath = `${activityBasePath}#courses`;
+  const interviewsPath = `${activityBasePath}#interviews`;
 
   return (
     <>
@@ -66,25 +72,73 @@ const UserSidebar = ({ isOpen, onClose, isAuth, user }) => {
           </button>
         </div>
 
-        <nav className="user-side-nav">
-          <NavLink to="/" end className={navClass} onClick={onClose}>
-            <AiFillHome />
-            <span>Home</span>
-          </NavLink>
-          <NavLink to="/interview" className={navClass} onClick={onClose}>
-            <FaUserAlt />
-            <span>Interview</span>
-          </NavLink>
-          <NavLink to="/reviews" className={navClass} onClick={onClose}>
-            <FaUserAlt />
-            <span>Review</span>
-          </NavLink>
+        <div className="user-side-body">
+          <nav className="user-side-nav">
+            <div className="user-side-section">
+              <p className="user-side-section-title">Main</p>
+              <NavLink to="/" end className={navClass} onClick={onClose}>
+                <AiFillHome />
+                <span>Home</span>
+              </NavLink>
+              <NavLink to="/courses" className={navClass} onClick={onClose}>
+                <AiOutlineBook />
+                <span>Courses</span>
+              </NavLink>
+              <NavLink to="/test" className={navClass} onClick={onClose}>
+                <TbClipboardText />
+                <span>Mock Tests</span>
+              </NavLink>
+              <NavLink to="/interview" className={navClass} onClick={onClose}>
+                <FaUserAlt />
+                <span>AI Interview</span>
+              </NavLink>
+              <NavLink to="/reviews" className={navClass} onClick={onClose}>
+                <BiBarChartAlt2 />
+                <span>Reviews</span>
+              </NavLink>
+              <Link to="/roadmap/Web%20Development" className={navClass()} onClick={onClose}>
+                <RiRoadMapLine />
+                <span>Roadmaps</span>
+              </Link>
+            </div>
 
-          {isAuth && (
-            <>
-              <NavLink to="/account" className={navClass} onClick={onClose}>
-                <RiProfileLine />
-                <span>My Profile</span>
+            {isAuth && (
+              <div className="user-side-section">
+                <p className="user-side-section-title">Your Space</p>
+                <NavLink to="/account" className={navClass} onClick={onClose}>
+                  <RiProfileLine />
+                  <span>My Profile</span>
+                </NavLink>
+                <NavLink to="/progress" className={navClass} onClick={onClose}>
+                  <BiBarChartAlt2 />
+                  <span>Progress</span>
+                </NavLink>
+                <NavLink to={`/${user?._id}/dashboard`} className={navClass} onClick={onClose}>
+                  <MdDashboard />
+                  <span>Dashboard</span>
+                </NavLink>
+                {user?.role === "admin" && (
+                  <NavLink to="/admin/dashboard" className={navClass} onClick={onClose}>
+                    <MdDashboard />
+                    <span>Admin Panel</span>
+                  </NavLink>
+                )}
+              </div>
+            )}
+
+            <div className="user-side-section">
+              <p className="user-side-section-title">Support</p>
+              <NavLink to="/about" className={navClass} onClick={onClose}>
+                <AiOutlineRead />
+                <span>About Us</span>
+              </NavLink>
+              <NavLink to="/blog" className={navClass} onClick={onClose}>
+                <AiOutlineRead />
+                <span>Educational Blog</span>
+              </NavLink>
+              <NavLink to="/careers" className={navClass} onClick={onClose}>
+                <AiOutlineRead />
+                <span>Careers</span>
               </NavLink>
               <NavLink to="/faq" className={navClass} onClick={onClose}>
                 <AiOutlineQuestionCircle />
@@ -94,40 +148,46 @@ const UserSidebar = ({ isOpen, onClose, isAuth, user }) => {
                 <AiOutlineMail />
                 <span>Contact Support</span>
               </NavLink>
-              <NavLink to={`/${user?._id}/dashboard`} className={navClass} onClick={onClose}>
-                <MdDashboard />
-                <span>Dashboard</span>
-              </NavLink>
-              {user?.role === "admin" && (
-                <NavLink to="/admin/dashboard" className={navClass} onClick={onClose}>
-                  <MdDashboard />
-                  <span>Admin Panel</span>
-                </NavLink>
-              )}
-            </>
-          )}
-        </nav>
+            </div>
+          </nav>
 
-        {isAuth && (
-          <div className="user-side-stats">
-            <Link
-              to={testsPath}
-              onClick={onClose}
-              className="user-side-stat-card user-side-stat-link"
-            >
-              <span>Tests (7d)</span>
-              <strong>{recentTestAttempts}</strong>
-            </Link>
-            <Link
-              to={coursesPath}
-              onClick={onClose}
-              className="user-side-stat-card user-side-stat-link"
-            >
-              <span>Courses</span>
-              <strong>{purchasedCourses}</strong>
-            </Link>
-          </div>
-        )}
+          {isAuth && (
+            <div className="user-side-stats">
+              <Link
+                to={testsPath}
+                onClick={onClose}
+                className="user-side-stat-card user-side-stat-link"
+              >
+                <span>Tests (7d)</span>
+                <strong>{recentTestAttempts}</strong>
+              </Link>
+              <Link
+                to={coursesPath}
+                onClick={onClose}
+                className="user-side-stat-card user-side-stat-link"
+              >
+                <span>Courses</span>
+                <strong>{purchasedCourses}</strong>
+              </Link>
+              <Link
+                to={interviewsPath}
+                onClick={onClose}
+                className="user-side-stat-card user-side-stat-link"
+              >
+                <span>Interviews</span>
+                <strong>{Array.isArray(user?.interviewHistory) ? user.interviewHistory.length : 0}</strong>
+              </Link>
+              <Link
+                to="/progress"
+                onClick={onClose}
+                className="user-side-stat-card user-side-stat-link"
+              >
+                <span>Total Tests</span>
+                <strong>{testAttempts}</strong>
+              </Link>
+            </div>
+          )}
+        </div>
 
         <div className="user-side-actions">
           {isAuth ? (

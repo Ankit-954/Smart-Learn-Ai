@@ -17,3 +17,13 @@
   margin: 0 0 28px;
   width: 100%;
 }
+
+@media (max-width: 640px) {
+  .student-dashboard {
+    padding: 24px 12px 32px;
+  }
+
+  .student-dashboard .dashboard-content {
+    justify-content: center;
+  }
+}

@@ -4,6 +4,7 @@ import { CourseData } from "../../context/CourseContext";
 import CourseCard from "../../components/coursecard/CourseCard";
 import { UserData } from "../../context/UserContext";
 import { usePageSeo } from "../../utils/usePageSeo";
+import { HiOutlineAdjustmentsHorizontal } from "react-icons/hi2";
 
 const Courses = () => {
   const { courses } = CourseData();
@@ -18,6 +19,7 @@ const Courses = () => {
   const [levelFilter, setLevelFilter] = useState("all");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [pricingFilter, setPricingFilter] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
   const [collapsed, setCollapsed] = useState({
     cart: false,
     free: false,
@@ -77,6 +79,9 @@ const Courses = () => {
   const paidCourses = filteredCourses.filter(
     (c) => !isEnrolled(c._id) && !(c.isFree || Number(c.price) <= 0)
   );
+  const activeFilterCount = [streamFilter, levelFilter, subjectFilter, pricingFilter].filter(
+    (value) => value !== "all"
+  ).length + (query.trim() ? 1 : 0);
 
   return (
     <div className="courses">
@@ -92,8 +97,21 @@ const Courses = () => {
         />
       </div>
 
+      <div className="courses-mobile-actions">
+        <button
+          type="button"
+          className="courses-filter-toggle-btn"
+          aria-expanded={showFilters}
+          onClick={() => setShowFilters((prev) => !prev)}
+        >
+          <HiOutlineAdjustmentsHorizontal />
+          <span>{showFilters ? "Hide Filters" : "Show Filters"}</span>
+          {activeFilterCount > 0 && <strong>{activeFilterCount}</strong>}
+        </button>
+      </div>
+
       <div className="courses-layout">
-        <aside className="courses-filter">
+        <aside className={`courses-filter ${showFilters ? "open" : ""}`}>
           <div className="courses-filter-head">
             <h3>Filters</h3>
             <button
@@ -104,6 +122,7 @@ const Courses = () => {
                 setSubjectFilter("all");
                 setPricingFilter("all");
                 setQuery("");
+                setShowFilters(false);
               }}
             >
               Clear all

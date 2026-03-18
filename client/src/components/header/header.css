@@ -1,6 +1,6 @@
 header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   padding: 14px 24px;
@@ -149,6 +149,7 @@ header {
   flex: 0 0 auto;
   align-items: center;
   gap: 10px;
+  justify-self: end;
 }
 
 .nav-group {
@@ -235,36 +236,56 @@ header {
 
 @media (max-width: 1024px) {
   header {
-    flex-wrap: wrap;
-    justify-content: center;
+    grid-template-columns: auto auto;
     padding: 12px 14px;
+    align-items: start;
   }
 
   .search-box {
     order: 3;
+    grid-column: 1 / -1;
     width: 100%;
     max-width: none;
-    margin: 6px 0 2px;
+    margin: 4px 0 2px;
   }
 
   .link {
-    flex-wrap: wrap;
-    justify-content: center;
+    justify-content: flex-end;
     gap: 6px;
   }
 
+  .nav-group,
   .nav-divider {
     display: none;
   }
 }
 
 @media (max-width: 640px) {
+  header {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
   .logo img {
     height: 44px;
+  }
+
+  .search-box {
+    padding: 3px 10px;
+  }
+
+  .search-box input {
+    font-size: 0.88rem;
   }
 
   .link a {
     font-size: 0.92rem;
     padding: 7px 9px;
+  }
+
+  .theme-toggle-btn,
+  .menu-toggle-btn {
+    width: 40px;
+    height: 40px;
   }
 }
