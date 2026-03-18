@@ -241,6 +241,10 @@ header {
     align-items: start;
   }
 
+  .logo {
+    margin-right: 0;
+  }
+
   .search-box {
     order: 3;
     grid-column: 1 / -1;
@@ -254,8 +258,8 @@ header {
     gap: 6px;
   }
 
-  .nav-group,
-  .nav-divider {
+  .link .nav-group,
+  .link .nav-divider {
     display: none;
   }
 }
@@ -278,14 +282,35 @@ header {
     font-size: 0.88rem;
   }
 
-  .link a {
-    font-size: 0.92rem;
-    padding: 7px 9px;
+  .logo img {
+    height: 40px;
   }
 
   .theme-toggle-btn,
   .menu-toggle-btn {
     width: 40px;
     height: 40px;
+  }
+
+  .theme-toggle-btn {
+    border-radius: 12px;
+  }
+
+  .menu-toggle-btn {
+    border-radius: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .link {
+    min-width: 0;
+  }
+
+  .link a {
+    display: none;
   }
 }
