@@ -1,3 +1,6 @@
+/* ═══════════════════════════════════════════════════════════
+   FOOTER — Premium with Aurora Accent
+   ═══════════════════════════════════════════════════════════ */
 html,
 body {
   height: 100%;
@@ -24,7 +27,7 @@ body {
   border-top: 1px solid var(--border);
 }
 
-/* Subtle decorative top glow */
+/* Animated aurora top bar */
 .advanced-footer::before {
   content: "";
   position: absolute;
@@ -32,8 +35,30 @@ body {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, transparent, var(--primary), var(--accent), transparent);
-  opacity: 0.7;
+  background: var(--gradient-primary);
+  background-size: 300% 100%;
+  animation: footerAuroraFlow 6s ease-in-out infinite;
+  opacity: 0.85;
+}
+
+/* Subtle decorative glow orb */
+.advanced-footer::after {
+  content: "";
+  position: absolute;
+  top: -80px;
+  right: -60px;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, var(--primary-light), transparent 70%);
+  border-radius: 50%;
+  opacity: 0.3;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+@keyframes footerAuroraFlow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
 .footer-top {
@@ -56,6 +81,19 @@ body {
   margin: 0 0 20px;
   font-weight: 700;
   letter-spacing: 0.02em;
+  position: relative;
+  display: inline-block;
+}
+
+.footer-col h4::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 30px;
+  height: 2px;
+  background: var(--gradient-primary);
+  border-radius: 2px;
 }
 
 .footer-col ul {
@@ -71,13 +109,14 @@ body {
   text-decoration: none;
   color: var(--footer-muted);
   font-size: 0.95rem;
-  transition: color 0.25s ease, transform 0.25s ease;
+  transition: color 0.25s ease, transform 0.25s ease, text-shadow 0.25s ease;
   display: inline-block;
 }
 
 .footer-col ul li a:hover {
   color: var(--accent);
-  transform: translateX(4px);
+  transform: translateX(6px);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
 }
 
 .brand-col {
@@ -94,6 +133,7 @@ body {
 
 .footer-logo span {
   color: var(--accent);
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
 }
 
 .footer-desc {
@@ -103,6 +143,7 @@ body {
   margin: 0 0 24px;
 }
 
+/* Social links — 3D pop-out with glow */
 .social-links-advanced {
   display: flex;
   gap: 12px;
@@ -111,25 +152,27 @@ body {
 .social-links-advanced a {
   color: var(--footer-text);
   background: var(--footer-icon-bg);
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   font-size: 1.15rem;
   text-decoration: none;
-  transition: all 0.25s ease;
+  transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
   border: 1px solid var(--footer-border);
+  perspective: 600px;
 }
 
 .social-links-advanced a:hover {
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: var(--gradient-primary);
   color: #ffffff;
   border-color: transparent;
-  transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.3);
+  transform: translateY(-5px) rotateY(10deg) scale(1.12);
+  box-shadow: 0 8px 20px rgba(109, 40, 217, 0.35), 0 0 15px var(--border-glow);
 }
 
+/* Newsletter */
 .newsletter-col p {
   color: var(--footer-muted);
   font-size: 0.95rem;
@@ -145,13 +188,13 @@ body {
 .footer-newsletter-form input {
   flex: 1;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--footer-border);
   background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
   font-size: 0.9rem;
   outline: none;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
 }
 
 .footer-newsletter-form input::placeholder {
@@ -161,27 +204,31 @@ body {
 .footer-newsletter-form input:focus {
   border-color: var(--accent);
   background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
 }
 
 .footer-newsletter-form button {
   padding: 10px 18px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
+  background: var(--gradient-primary);
+  background-size: 200% 200%;
   color: #ffffff;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: btnGradientFlow 6s ease infinite;
 }
 
 .footer-newsletter-form button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.3);
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 8px 20px rgba(109, 40, 217, 0.3), var(--shadow-neon);
 }
 
+/* Footer Bottom */
 .footer-bottom {
   border-top: 1px solid var(--footer-border);
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .footer-bottom-inner {
@@ -205,10 +252,12 @@ body {
   color: var(--accent);
   text-decoration: none;
   font-weight: 700;
+  transition: text-shadow 0.2s ease;
 }
 
 .footer-bottom-inner p a:hover {
   text-decoration: underline;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.4);
 }
 
 .footer-legal-links {
@@ -227,6 +276,7 @@ body {
   color: #ffffff;
 }
 
+/* ─── Responsive ─── */
 @media (max-width: 1024px) {
   .footer-grid {
     grid-template-columns: 1fr 1fr;
@@ -239,7 +289,7 @@ body {
     grid-template-columns: 1fr;
     gap: 34px;
   }
-  
+
   .brand-col {
     padding-right: 0;
   }
@@ -248,7 +298,7 @@ body {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .footer-legal-links {
     justify-content: center;
   }

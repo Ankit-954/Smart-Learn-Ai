@@ -1,3 +1,6 @@
+/* ═══════════════════════════════════════════════════════════
+   COURSES PAGE — Premium Filter & Grid
+   ═══════════════════════════════════════════════════════════ */
 .courses {
   min-height: 65vh;
   padding: 20px clamp(14px, 2.8vw, 30px) 34px;
@@ -6,34 +9,55 @@
 .courses-hero {
   background: var(--surface-glass);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 18px;
+  border-radius: 20px;
+  padding: 24px;
   text-align: center;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px) saturate(150%);
   animation: fadeInUp 0.5s ease both;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Aurora gradient sweep background */
+.courses-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 50%, rgba(109, 40, 217, 0.06), transparent 60%),
+              radial-gradient(ellipse at 70% 50%, rgba(6, 182, 212, 0.04), transparent 60%);
+  pointer-events: none;
+  border-radius: inherit;
 }
 
 .courses-hero h2 {
   margin: 0;
   font-size: clamp(1.5rem, 3vw, 2.2rem);
-  color: var(--text);
+  background: var(--gradient-primary);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textShimmer 6s ease-in-out infinite;
+  position: relative;
 }
 
 .courses-hero p {
   margin: 6px 0 14px;
   color: var(--muted);
+  position: relative;
 }
 
 .courses-search {
   width: min(100%, 520px);
   border: 1px solid var(--input-border);
   border-radius: 999px;
-  padding: 10px 14px;
+  padding: 10px 16px;
   outline: none;
   background: var(--input-bg);
   color: var(--text);
   font-size: 0.95rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+  position: relative;
 }
 
 .courses-search::placeholder {
@@ -42,7 +66,8 @@
 
 .courses-search:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px var(--primary-light);
+  box-shadow: 0 0 0 4px var(--primary-light), 0 0 12px var(--border-glow);
+  transform: translateY(-1px);
 }
 
 .courses-layout {
@@ -70,6 +95,13 @@
   gap: 10px;
   font-weight: 700;
   box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.courses-filter-toggle-btn:hover {
+  box-shadow: var(--shadow-md), var(--shadow-neon);
+  border-color: var(--border-glow);
 }
 
 .courses-filter-toggle-btn strong {
@@ -83,15 +115,22 @@
   font-size: 0.82rem;
 }
 
+/* Filter panel — glassmorphism with glow border */
 .courses-filter {
   background: var(--surface-glass);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 12px;
+  border-radius: 18px;
+  padding: 14px;
   height: fit-content;
   position: sticky;
   top: calc(var(--header-height) + 12px);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px) saturate(150%);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.courses-filter:hover {
+  border-color: var(--border-glow);
+  box-shadow: var(--shadow-md), 0 0 15px var(--border-glow);
 }
 
 .courses-filter-head {
@@ -123,10 +162,17 @@
 .courses-filter select {
   width: 100%;
   border: 1px solid var(--input-border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 9px 10px;
   background: var(--input-bg);
   color: var(--text);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.courses-filter select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
 }
 
 .courses-result-bar {
@@ -176,11 +222,13 @@
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
+  transition: color 0.2s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .course-section-toggle:hover {
   color: var(--text);
   border-color: var(--primary);
+  box-shadow: 0 0 8px var(--border-glow);
 }
 
 .course-empty {

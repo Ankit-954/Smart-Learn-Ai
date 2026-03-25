@@ -50,6 +50,9 @@ const Home = () => {
   return (
     <div>
       <div className="home">
+        <div className="home-orb home-orb-1" />
+        <div className="home-orb home-orb-2" />
+        <div className="home-orb home-orb-3" />
         <div className="home-content" data-aos="fade-up">
           <h1>Welcome to our SmartLearn AI Platform</h1>
           <p>Learn, Grow, Excel</p>

@@ -1,67 +1,162 @@
+/* ═══════════════════════════════════════════════════════════
+   TESTIMONIALS — 3D Cards with Gradient Accents
+   ═══════════════════════════════════════════════════════════ */
 .testimonials {
   position: relative;
-  padding: 90px 24px;
+  padding: 100px 24px;
   background: var(--bg-gradient);
   text-align: center;
+  overflow: hidden;
+}
+
+/* Decorative background orbs */
+.testimonials::before,
+.testimonials::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.testimonials::before {
+  width: 400px;
+  height: 400px;
+  top: -100px;
+  right: -80px;
+  background: radial-gradient(circle, var(--primary), transparent 70%);
+  animation: particleDrift 15s ease-in-out infinite;
+}
+
+.testimonials::after {
+  width: 350px;
+  height: 350px;
+  bottom: -80px;
+  left: -60px;
+  background: radial-gradient(circle, var(--accent), transparent 70%);
+  animation: particleDrift 18s ease-in-out infinite reverse;
 }
 
 .testimonials h2 {
   margin: 0;
   font-size: clamp(1.8rem, 3.6vw, 3rem);
   letter-spacing: -0.8px;
-  color: var(--text);
+  background: var(--gradient-primary);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textShimmer 6s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
 }
 
 .testmonials-cards {
-  margin: 34px auto 0;
+  margin: 40px auto 0;
   max-width: 1180px;
   display: grid;
-  gap: 22px;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   align-items: stretch;
+  position: relative;
+  z-index: 1;
 }
 
 .testimonial-card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   box-shadow: var(--shadow-sm);
-  padding: 22px;
-  border-radius: 16px;
+  padding: 28px 22px;
+  border-radius: 20px;
   text-align: left;
   display: flex;
   flex-direction: column;
   align-items: center;
   min-height: 360px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.45s ease, border-color 0.3s ease;
   transform-style: preserve-3d;
-  perspective: 800px;
+  perspective: 1000px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Shimmer sweep on hover */
+.testimonial-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: skewX(-20deg);
+  pointer-events: none;
+  z-index: 2;
+  transition: none;
+}
+
+/* Decorative gradient quote icon */
+.testimonial-card::before {
+  content: "\201C";
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  font-size: 5rem;
+  font-family: Georgia, serif;
+  line-height: 1;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 1;
 }
 
 .testimonial-card:hover {
-  transform: translateY(-6px) rotateX(1deg);
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  transform: translateY(-10px) rotateX(3deg) rotateY(-2deg);
+  box-shadow: var(--shadow-lg), var(--shadow-neon);
+  border-color: var(--border-glow);
 }
 
+.testimonial-card:hover::after {
+  animation: shimmer 0.8s ease-in-out;
+}
+
+/* Alternating accent borders for visual variety */
+.testimonial-card:nth-child(3n+1) { border-bottom: 3px solid var(--primary); }
+.testimonial-card:nth-child(3n+2) { border-bottom: 3px solid var(--accent); }
+.testimonial-card:nth-child(3n+3) { border-bottom: 3px solid #f472b6; }
+
 .student-image img {
-  width: 74px;
-  height: 74px;
+  width: 78px;
+  height: 78px;
   border-radius: 50%;
   object-fit: cover;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   border: 3px solid var(--border);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.testimonial-card:hover .student-image img {
+  transform: scale(1.08);
+  box-shadow: 0 0 15px var(--border-glow);
 }
 
 .message {
   margin: 0 0 14px;
   font-size: 0.98rem;
   color: var(--text-secondary);
-  line-height: 1.6;
+  line-height: 1.7;
   width: 100%;
   display: -webkit-box;
   -webkit-line-clamp: 5;
   line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  font-style: italic;
 }
 
 .info {
@@ -71,7 +166,7 @@
 
 .name {
   margin: 0 0 3px;
-  font-size: 1.08rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--text);
 }
@@ -85,8 +180,9 @@
 .rating {
   margin: 8px 0 0;
   color: var(--warning);
-  letter-spacing: 1px;
-  font-size: 0.92rem;
+  letter-spacing: 2px;
+  font-size: 0.95rem;
+  text-shadow: 0 0 6px rgba(245, 158, 11, 0.3);
 }
 
 .testimonial-empty {

@@ -1,3 +1,6 @@
+/* ═══════════════════════════════════════════════════════════
+   HOME PAGE — Hero with Aurora Background & 3D Orbs
+   ═══════════════════════════════════════════════════════════ */
 .home {
   position: relative;
   isolation: isolate;
@@ -7,6 +10,7 @@
   text-align: center;
 }
 
+/* Floating animated orbs */
 .home::before,
 .home::after {
   content: "";
@@ -14,69 +18,112 @@
   z-index: -1;
   border-radius: 50%;
   filter: blur(80px);
-  animation: floatOrb 10s ease-in-out infinite alternate;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .home::before {
-  width: 500px;
-  height: 500px;
-  right: -100px;
-  top: -150px;
+  width: 550px;
+  height: 550px;
+  right: -120px;
+  top: -180px;
   background: radial-gradient(circle, var(--primary), transparent 70%);
+  animation: floatOrb 12s ease-in-out infinite alternate;
 }
 
 .home::after {
-  width: 450px;
-  height: 450px;
-  left: -150px;
-  bottom: -100px;
+  width: 500px;
+  height: 500px;
+  left: -180px;
+  bottom: -120px;
   background: radial-gradient(circle, var(--accent), transparent 70%);
-  animation-delay: -5s;
+  animation: floatOrb 14s ease-in-out infinite alternate-reverse;
 }
 
 @keyframes floatOrb {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-30px, 20px) scale(1.1); }
-  100% { transform: translate(20px, -30px) scale(0.9); }
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  33% { transform: translate(-40px, 25px) scale(1.15) rotate(60deg); }
+  66% { transform: translate(30px, -35px) scale(0.9) rotate(120deg); }
+  100% { transform: translate(20px, -30px) scale(1.05) rotate(180deg); }
 }
 
+/* Decorative floating orbs */
+.home-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.home-orb-1 {
+  width: 250px;
+  height: 250px;
+  top: 20%;
+  left: 15%;
+  background: radial-gradient(circle, #f472b6, transparent 70%);
+  animation: particleDrift 20s ease-in-out infinite;
+}
+
+.home-orb-2 {
+  width: 200px;
+  height: 200px;
+  bottom: 30%;
+  right: 10%;
+  background: radial-gradient(circle, #60a5fa, transparent 70%);
+  animation: particleDrift 16s ease-in-out infinite reverse;
+}
+
+.home-orb-3 {
+  width: 180px;
+  height: 180px;
+  top: 60%;
+  left: 60%;
+  background: radial-gradient(circle, #a78bfa, transparent 70%);
+  animation: particleDrift 22s ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+/* Hero glassmorphism card */
 .home-content {
   max-width: 960px;
   margin: 0 auto;
   background: var(--surface-glass);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--card-border);
   border-radius: 28px;
   padding: 60px 40px;
-  box-shadow: var(--shadow-lg), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  box-shadow: var(--shadow-lg), var(--shadow-neon);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
   animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
   position: relative;
   overflow: hidden;
 }
 
+/* Top shine overlay */
 .home-content::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
   border-radius: inherit;
   pointer-events: none;
 }
 
+/* Animated gradient text */
 .home-content h1 {
   margin: 0 0 18px;
   font-size: clamp(2.5rem, 5vw, 4.5rem);
   line-height: 1.1;
   letter-spacing: -1.5px;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--text) 0%, var(--primary-dark) 100%);
+  background: var(--gradient-primary);
+  background-size: 300% 300%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: 0.1s;
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both, textShimmer 6s ease-in-out infinite;
+  animation-delay: 0.1s, 0s;
 }
 
 .home-content p {
@@ -99,23 +146,47 @@
   animation-delay: 0.3s;
 }
 
+/* ─── Top Courses Section ─── */
 .home-top-courses {
-  padding: 30px clamp(14px, 3vw, 24px) 10px;
+  padding: 40px clamp(14px, 3vw, 24px) 10px;
 }
 
 .home-top-courses-head {
   text-align: center;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .home-top-courses-head h2 {
   margin: 0;
   font-size: clamp(1.4rem, 2.8vw, 2rem);
-  color: var(--text);
+  background: var(--gradient-primary);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textShimmer 6s ease-in-out infinite;
+  display: inline-block;
+  position: relative;
+}
+
+/* Animated underline */
+.home-top-courses-head h2::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 20%;
+  right: 20%;
+  height: 3px;
+  background: var(--gradient-primary);
+  border-radius: 3px;
+  box-shadow: 0 0 8px var(--border-glow);
+  animation: underlineGrow 0.6s ease both;
+  animation-delay: 0.5s;
+  transform-origin: center;
 }
 
 .home-top-courses-head p {
-  margin: 6px 0 0;
+  margin: 12px 0 0;
   color: var(--muted);
 }
 
@@ -127,7 +198,7 @@
 }
 
 .home-top-courses-footer {
-  margin-top: 14px;
+  margin-top: 18px;
   display: flex;
   justify-content: flex-end;
 }
@@ -135,7 +206,7 @@
 .home-continue-btn {
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
-  padding: 12px 24px;
+  padding: 12px 26px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -143,11 +214,13 @@
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
-  background: linear-gradient(130deg, var(--primary) 0%, var(--accent) 100%);
-  box-shadow: var(--shadow-md), inset 0 1px 1px rgba(255,255,255,0.4);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  background: var(--gradient-primary);
+  background-size: 200% 200%;
+  box-shadow: var(--shadow-md), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   position: relative;
   overflow: hidden;
+  animation: btnGradientFlow 6s ease infinite;
 }
 
 .home-continue-btn::after {
@@ -157,15 +230,15 @@
   left: -100%;
   width: 50%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-  transition: left 0.5s ease-in-out;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.6s ease-in-out;
   transform: skewX(-20deg);
 }
 
 .home-continue-btn:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: var(--shadow-lg), var(--shadow-glow);
-  background: linear-gradient(130deg, var(--primary-dark) 0%, var(--primary) 100%);
+  transform: translateY(-4px) scale(1.04);
+  box-shadow: var(--shadow-lg), var(--shadow-neon);
+  filter: brightness(1.1);
 }
 
 .home-continue-btn:hover::after {
@@ -177,6 +250,7 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* ─── Responsive ─── */
 @media (max-width: 768px) {
   .home {
     padding: 100px 16px 90px;
@@ -189,6 +263,8 @@
   .home-top-courses-footer {
     justify-content: center;
   }
+
+  .home-orb { display: none; }
 }
 
 @media (max-width: 480px) {

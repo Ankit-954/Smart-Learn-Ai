@@ -1,21 +1,44 @@
+/* ═══════════════════════════════════════════════════════════
+   COURSE CARD — 3D Tilt with Shimmer & Glow
+   ═══════════════════════════════════════════════════════════ */
 .course-card {
   background-color: var(--card-bg);
   border: 1px solid var(--card-border);
   box-shadow: var(--shadow-sm);
   padding: 20px;
-  border-radius: 14px;
+  border-radius: 18px;
   text-align: center;
   width: min(100%, 270px);
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   z-index: 1;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.45s ease, border-color 0.3s ease;
   transform-style: preserve-3d;
-  perspective: 800px;
+  perspective: 1000px;
+
+  /* Shimmer sweep overlay */
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+    transform: skewX(-20deg);
+    pointer-events: none;
+    z-index: 3;
+    transition: none;
+  }
 
   &:hover {
-    transform: translateY(-6px) rotateX(1deg);
-    box-shadow: var(--shadow-lg), var(--shadow-glow);
+    transform: translateY(-10px) rotateX(3deg) rotateY(-3deg) scale(1.02);
+    box-shadow: var(--shadow-lg), var(--shadow-neon);
+    border-color: var(--border-glow);
+  }
+
+  &:hover::after {
+    animation: shimmer 0.8s ease-in-out;
   }
 
   .course-image {
@@ -25,13 +48,13 @@
     object-fit: cover;
     object-position: center;
     background: var(--surface-hover);
-    border-radius: 10px;
+    border-radius: 12px;
     margin-bottom: 10px;
-    transition: transform 0.3s ease;
+    transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
   }
 
   &:hover .course-image {
-    transform: scale(1.03);
+    transform: scale(1.06) translateZ(10px);
   }
 
   .top-course-badge {
@@ -40,28 +63,36 @@
     right: 10px;
     background: var(--success);
     color: #ffffff;
-    padding: 4px 8px;
+    padding: 4px 10px;
     border-radius: 999px;
     font-size: 11px;
     font-weight: 700;
+    animation: glowPulse 2.5s ease-in-out infinite;
+    z-index: 4;
   }
 
   .free-course-badge {
     position: absolute;
     top: 10px;
     left: 10px;
-    background: var(--accent);
+    background: var(--gradient-primary);
     color: #ffffff;
-    padding: 4px 8px;
+    padding: 4px 10px;
     border-radius: 999px;
     font-size: 11px;
     font-weight: 700;
+    z-index: 4;
   }
 
   h3 {
     font-size: 18px;
     color: var(--text);
     margin-bottom: 10px;
+    transition: color 0.3s ease;
+  }
+
+  &:hover h3 {
+    color: var(--primary);
   }
 
   p {
@@ -82,8 +113,15 @@
       background: var(--primary-light);
       color: var(--primary);
       border-radius: 999px;
-      padding: 4px 8px;
+      padding: 4px 10px;
+      transition: background-color 0.3s ease, transform 0.3s ease;
     }
+  }
+
+  &:hover .course-meta-line span {
+    background: var(--gradient-accent);
+    color: #fff;
+    transform: scale(1.05);
   }
 
   .course-subject-tags {
