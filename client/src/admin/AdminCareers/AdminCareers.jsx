@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import Layout from "../Utils/Layout";
 import axios from "axios";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import toast from "react-hot-toast";
 import { FiBriefcase, FiSettings } from "react-icons/fi";
 import { createPortal } from "react-dom";

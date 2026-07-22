@@ -1,6 +1,7 @@
 import axios from "axios";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { server } from "../main";
+import API from "../utils/api.js";
+const server = API.defaults.baseURL;
 
 const CourseContext = createContext();
 

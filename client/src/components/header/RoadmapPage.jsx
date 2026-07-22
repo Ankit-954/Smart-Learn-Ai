@@ -3,7 +3,8 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import { FaChevronDown, FaChevronUp, FaBookOpen, FaCode, FaExclamationTriangle, FaCheckCircle } from "react-icons/fa";
 import "./roadmap.css";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import CourseCard from "../coursecard/CourseCard";
 
 const renderSafeText = (value) => {

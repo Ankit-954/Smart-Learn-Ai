@@ -2,7 +2,8 @@ import React, { useRef, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './TestSection.css';
-import { server } from '../../main';
+import API from '../../utils/api.js';
+const server = API.defaults.baseURL;
 
 const pendingQuestionRequests = new Map();
 const TOTAL_QUESTIONS = 10;

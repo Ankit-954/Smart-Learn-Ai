@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./testimonials.css";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 
 const Testimonials = () => {
   const [reviews, setReviews] = useState([]);

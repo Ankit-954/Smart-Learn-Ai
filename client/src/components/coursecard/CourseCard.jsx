@@ -5,7 +5,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import axios from "axios";
 import { CourseData } from "../../context/CourseContext";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import CourseThumbnail from "../coursethumbnail/CourseThumbnail";
 import { FiChevronDown } from "react-icons/fi";
 

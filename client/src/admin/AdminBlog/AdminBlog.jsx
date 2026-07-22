@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../Utils/Layout";
 import axios from "axios";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import toast from "react-hot-toast";
 import { AiOutlineDelete, AiOutlinePlus, AiOutlineLoading3Quarters } from "react-icons/ai";
 import "./adminblog.css";

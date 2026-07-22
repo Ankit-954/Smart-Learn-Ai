@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./chatbotWidget.css";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import { FaRobot, FaTimes } from "react-icons/fa";
 import { IoSend } from "react-icons/io5";
 import toast from "react-hot-toast";

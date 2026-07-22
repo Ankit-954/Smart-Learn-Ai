@@ -8,7 +8,8 @@ import "./header.css";
 import logos from "./logos.png";
 import { CourseData } from "../../context/CourseContext";
 import { useTheme } from "../../context/ThemeContext";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 
 const QUICK_TOPICS = [
   "Full Stack Development",

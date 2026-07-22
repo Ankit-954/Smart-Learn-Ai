@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { server } from '../../main';
+import API from '../../utils/api.js';
+const server = API.defaults.baseURL;
 import './TestDomain.css';
 
 const DomainSelection = () => {

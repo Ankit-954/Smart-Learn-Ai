@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import { AiOutlineLoading3Quarters } from "react-icons/ai";
 import * as Icons from "react-icons/fa"; // Import all FontAwesome icons for dynamic rendering
 import "./about.css";
