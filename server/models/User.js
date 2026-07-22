@@ -49,6 +49,7 @@ const schema = new mongoose.Schema(
         ref: "Courses",
       },
     ],
+    resetPasswordToken: String,
     resetPasswordExpire: Date,
     testHistory: [
       {

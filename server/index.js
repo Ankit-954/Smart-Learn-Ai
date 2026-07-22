@@ -48,7 +48,12 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
 
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Reject null origins explicitly (security risk)
+    if (!origin) {
+      return callback(new Error("Null origin not allowed"));
+    }
+    
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
       return;
     }
@@ -413,7 +418,11 @@ app.post("/api/generate-questions", aiLimiter, async (req, res) => {
       }`;
 
       if (!process.env.GROQ_API_KEY) {
-        throw new Error("GROQ_API_KEY is not configured");
+        // Return generic error in production, detailed only in development
+        const errorMsg = process.env.NODE_ENV === "production" 
+          ? "AI service temporarily unavailable" 
+          : "GROQ_API_KEY is not configured";
+        throw new Error(errorMsg);
       }
 
       const model = "llama-3.1-8b-instant"; // The load balancer overrides this
@@ -521,7 +530,11 @@ app.post("/api/analyze-test-performance", aiLimiter, async (req, res) => {
     }));
 
     if (!process.env.GROQ_API_KEY) {
-      throw new Error("GROQ_API_KEY is not configured");
+      // Return generic error in production, detailed only in development
+      const errorMsg = process.env.NODE_ENV === "production" 
+        ? "AI service temporarily unavailable" 
+        : "GROQ_API_KEY is not configured";
+      throw new Error(errorMsg);
     }
 
     const model = "llama-3.1-8b-instant";

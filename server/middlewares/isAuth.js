@@ -3,7 +3,17 @@ import { User } from "../models/User.js";
 
 export const isAuth = async (req, res, next) => {
   try {
-    const token = req.headers.token;
+    // Support both standard Authorization header and legacy token header
+    let token;
+    
+    // Check for standard Bearer token first
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    } else {
+      // Fallback to legacy token header for backward compatibility
+      token = req.headers.token;
+    }
 
     if (!token)
       return res.status(401).json({
