@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 
 const normalizeImagePath = (path) => path.replace(/\\/g, "/").replace(/^\/+/, "");
 const escapeXml = (value = "") =>

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import "./careers.css";
 import { AiOutlineTeam, AiOutlineTrophy, AiOutlineRocket } from "react-icons/ai";
 import axios from "axios";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import { usePageSeo } from "../../utils/usePageSeo";
 
 const Careers = () => {

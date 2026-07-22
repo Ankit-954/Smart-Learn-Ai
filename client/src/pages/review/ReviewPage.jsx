@@ -3,7 +3,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faStar, faTrash } from "@fortawesome/free-solid-svg-icons";
 import toast from "react-hot-toast";
 import "./reviewPage.css";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import { UserData } from "../../context/UserContext";
 
 const MAX_IMAGE_SIZE = 30 * 1024;

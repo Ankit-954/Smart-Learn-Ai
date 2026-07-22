@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
 import "./contact.css";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import { AiOutlineMail, AiOutlinePhone, AiOutlineEnvironment, AiOutlineLoading3Quarters } from "react-icons/ai";
 import { usePageSeo } from "../../utils/usePageSeo";
 

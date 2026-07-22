@@ -10,7 +10,8 @@ import {
   AiOutlineCheckCircle
 } from "react-icons/ai";
 import { Link } from "react-router-dom";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 
 const Footer = () => {
   const [email, setEmail] = useState("");

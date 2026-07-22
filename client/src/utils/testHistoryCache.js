@@ -1,5 +1,6 @@
 import axios from "axios";
-import { server } from "../main";
+import API from "../utils/api.js";
+const server = API.defaults.baseURL;
 
 const cache = {
   data: null,

@@ -20,7 +20,8 @@ import {
   FaChartLine,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import "./interviewPage.css";
 
 /* ── Constants ───────────────────────────────────────────────── */

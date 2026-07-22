@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import "./blog.css";
 import { Link } from "react-router-dom";
 import { AiOutlineClockCircle, AiOutlineUser, AiOutlineCheckCircle, AiOutlineLoading3Quarters } from "react-icons/ai";

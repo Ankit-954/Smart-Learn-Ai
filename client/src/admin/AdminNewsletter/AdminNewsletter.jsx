@@ -3,7 +3,8 @@ import "./adminnewsletter.css";
 import Layout from "../Utils/Layout";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 import { AiOutlineMail, AiOutlineSearch, AiOutlineSend } from "react-icons/ai";
 
 const AdminNewsletter = () => {

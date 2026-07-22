@@ -6,7 +6,8 @@ import CourseCard from "../../components/coursecard/CourseCard";
 import "./admincourses.css";
 import toast from "react-hot-toast";
 import axios from "axios";
-import { server } from "../../main";
+import API from "../../utils/api.js";
+const server = API.defaults.baseURL;
 
 const categories = [
   "Web Development",
