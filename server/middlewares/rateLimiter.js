@@ -6,7 +6,6 @@ export const globalLimiter = rateLimit({
   max: process.env.NODE_ENV === "production" ? 200 : 1000, // Higher limit for local development hot-reloads
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.method === "GET" && req.path === "/api/user/test-history",
   message: { message: "Too many requests. Please try again later." },
 });
 

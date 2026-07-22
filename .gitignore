@@ -1,27 +1,42 @@
+```
 # Dependencies
 node_modules/
 
-# Environment files (contain secrets!)
+# Environment
 .env
 .env.local
-.env.production
+.env.*
 
-# Build outputs
-dist/
-build/
+# Logs and temp files
+*.log
+*.tmp
 
-# Uploaded files (use cloud storage in production)
-server/uploads/
-
-# OS generated files
-.DS_Store
-Thumbs.db
-desktop.ini
-
-# IDE
+# Editors
 .vscode/
 .idea/
 
-# Logs
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 *.log
-npm-debug.log*
+.git/modules/
+.DS_Store
+*.swp
+*.swo
+*~
+```
