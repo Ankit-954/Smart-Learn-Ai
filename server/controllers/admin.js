@@ -16,6 +16,7 @@ import {
 import { Parser } from "json2csv";
 import Review from "../models/Review.js";
 import { Contact } from "../models/Contact.js";
+import { escapeRegExp } from "../utils/sanitize.js";
 
 const ALLOWED_DURATION_UNITS = ["day", "week", "month"];
 
@@ -175,7 +176,9 @@ export const getAllContactsAdmin = TryCatch(async (req, res) => {
   }
 
   if (q) {
-    const regex = new RegExp(String(q), "i");
+    // Escape special regex characters to prevent ReDoS attacks
+    const safeQuery = escapeRegExp(String(q));
+    const regex = new RegExp(safeQuery, "i");
     filter.$or = [
       { name: regex },
       { email: regex },
@@ -266,7 +269,9 @@ export const getAllNewsletterSubscribersAdmin = TryCatch(async (req, res) => {
 
   const searchFilter = {};
   if (q) {
-    searchFilter.email = { $regex: q, $options: "i" };
+    // Escape special regex characters to prevent ReDoS attacks
+    const safeQuery = escapeRegExp(q);
+    searchFilter.email = { $regex: safeQuery, $options: "i" };
   }
 
   const filter = { ...searchFilter };
@@ -526,9 +531,11 @@ export const getAllUser = TryCatch(async (req, res) => {
   const filter = { _id: { $ne: req.user._id } };
 
   if (q) {
+    // Escape special regex characters to prevent ReDoS attacks
+    const safeQuery = escapeRegExp(q);
     filter.$or = [
-      { name: { $regex: q, $options: "i" } },
-      { email: { $regex: q, $options: "i" } },
+      { name: { $regex: safeQuery, $options: "i" } },
+      { email: { $regex: safeQuery, $options: "i" } },
     ];
   }
 

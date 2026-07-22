@@ -1,6 +1,7 @@
 import { User } from "../models/User.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import axios from "axios";
 import { OAuth2Client } from "google-auth-library";
 import { Courses } from "../models/Courses.js";
@@ -11,6 +12,7 @@ import sendMail, {
   sendForgotMail,
 } from "../middlewares/sendMail.js";
 import TryCatch from "../middlewares/TryCatch.js";
+import { escapeRegExp } from "../utils/sanitize.js";
 
 const SMARTLEARN_KEYWORDS = [
   "smartlearn",
@@ -87,7 +89,9 @@ const buildCourseLinks = async (queryText) => {
       .filter((t) => t.length > 2 && !["course", "courses", "show", "list", "learn", "for", "about", "in"].includes(t))
       .slice(0, 4);
 
-    const regex = terms.length > 0 ? new RegExp(terms.join("|"), "i") : null;
+    // Escape regex special characters to prevent ReDoS
+    const safeTerms = terms.map(escapeRegExp);
+    const regex = safeTerms.length > 0 ? new RegExp(safeTerms.join("|"), "i") : null;
     const filter = regex ? { $or: [{ title: regex }, { category: regex }, { description: regex }] } : {};
     const courses = await Courses.find(filter).sort({ createdAt: -1 }).limit(5).select("_id title");
 
@@ -547,7 +551,9 @@ const toolFindCourses = async (queryText) => {
         ].includes(t)
     )
     .slice(0, 5);
-  const regex = terms.length > 0 ? new RegExp(terms.join("|"), "i") : null;
+  // Escape regex special characters to prevent ReDoS attacks
+  const safeTerms = terms.map(escapeRegExp);
+  const regex = safeTerms.length > 0 ? new RegExp(safeTerms.join("|"), "i") : null;
   const filter = regex
     ? {
         $or: [
@@ -1619,9 +1625,14 @@ export const getSearchSuggestions = TryCatch(async (req, res) => {
     return res.json({ suggestions: cached.value, cached: true });
   }
 
-  const q = compactQuery(query);
-  const terms = q.split(" ").filter((t) => t.length > 1).slice(0, 5);
-  const regex = terms.length > 0 ? new RegExp(terms.join("|"), "i") : null;
+  const terms = compactQuery(query)
+    .split(" ")
+    .filter((t) => t.length > 2)
+    .slice(0, 5);
+  // Escape regex special characters to prevent ReDoS attacks
+  const safeTerms = terms.map(escapeRegExp);
+  const regexSource = safeTerms.length ? safeTerms.join("|") : escapeRegExp(query);
+  const regex = new RegExp(regexSource, "i");
   const courseFilter = regex
     ? {
         $or: [
@@ -1729,14 +1740,13 @@ export const generateRoadmap = TryCatch(async (req, res) => {
   }
 
   const topic = topicRaw.slice(0, 80);
-  const languageProfile = getLanguageProfile(topicRaw);
-  const escapeRegExp = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const terms = compactQuery(topic)
+  const terms = compactQuery(topicRaw)
     .split(" ")
     .filter((t) => t.length > 2)
     .slice(0, 5);
+  // Escape regex special characters to prevent ReDoS attacks
   const safeTerms = terms.map(escapeRegExp);
-  const regexSource = safeTerms.length ? safeTerms.join("|") : escapeRegExp(topic);
+  const regexSource = safeTerms.length ? safeTerms.join("|") : escapeRegExp(topicRaw);
   const regex = new RegExp(regexSource, "i");
 
   const matchedCourses = await Courses.find({
@@ -2286,15 +2296,24 @@ export const forgotPassword = TryCatch(async (req, res) => {
       message: "No User with this email",
     });
 
-  const token = jwt.sign({ email }, process.env.Forgot_Secret, { expiresIn: "5m" });
-
-  const data = { email, token };
-
-  await sendForgotMail("E learning", data);
-
+  // Generate a secure random token
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  
+  // Hash the token before storing in database
+  const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  
+  // Set expiry time (5 minutes)
+  user.resetPasswordToken = hashedToken;
   user.resetPasswordExpire = Date.now() + 5 * 60 * 1000;
 
   await user.save();
+
+  // Create reset URL with the plain token (not hashed)
+  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}&email=${email}`;
+  
+  const data = { email, token: resetToken, resetUrl };
+
+  await sendForgotMail("E learning", data);
 
   res.json({
     message: "Reset Password Link is send to you mail",
@@ -2302,30 +2321,36 @@ export const forgotPassword = TryCatch(async (req, res) => {
 });
 
 export const resetPassword = TryCatch(async (req, res) => {
-  const decodedData = jwt.verify(req.query.token, process.env.Forgot_Secret);
+  const { token } = req.query;
+  const { password } = req.body;
 
-  const user = await User.findOne({ email: decodedData.email });
-
-  if (!user)
-    return res.status(404).json({
-      message: "No user with this email",
-    });
-
-  if (user.resetPasswordExpire === null)
+  if (!token) {
     return res.status(400).json({
-      message: "Token Expired",
-    });
-
-  if (user.resetPasswordExpire < Date.now()) {
-    return res.status(400).json({
-      message: "Token Expired",
+      message: "Reset token is required",
     });
   }
 
-  const password = await bcrypt.hash(req.body.password, 10);
+  // Hash the provided token to compare with stored hash
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-  user.password = password;
+  const user = await User.findOne({ 
+    resetPasswordToken: hashedToken,
+    resetPasswordExpire: { $gt: Date.now() }
+  });
 
+  if (!user) {
+    return res.status(400).json({
+      message: "Invalid or expired token",
+    });
+  }
+
+  // Hash the new password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  user.password = hashedPassword;
+  
+  // Clear the reset token and expiry to invalidate the token after use
+  user.resetPasswordToken = null;
   user.resetPasswordExpire = null;
 
   await user.save();

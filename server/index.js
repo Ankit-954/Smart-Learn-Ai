@@ -5,21 +5,39 @@ import compression from "compression";
 import { connectDb } from "./database/db.js";
 import Razorpay from "razorpay";
 import cors from "cors";
-import axios from "axios";
 import { initCronJobs } from "./cron/jobs.js";
 import { globalLimiter, aiLimiter } from "./middlewares/rateLimiter.js";
+import {
+  TEST_DOMAINS,
+  REQUIRED_ENV_VARS,
+  DEFAULT_CORS_ORIGIN,
+  REQUEST_LIMITS,
+} from "./constants/index.js";
+import { logEvent } from "./helpers/logger.js";
+import {
+  sleep,
+  stripCodeFences,
+  extractJSONArrayString,
+  extractJSONObjectString,
+  parseJSONArrayOrRepair,
+  parseJSONObjectOrRepair,
+  requestAIWithRetry,
+  isRetryableOpenAIError,
+} from "./helpers/aiHelpers.js";
+import {
+  normalizeDifficulty,
+  shuffleArray,
+  normalizeQuestionPayload,
+  validateQuestionCount,
+  validateDomain,
+} from "./helpers/validation.js";
 
 dotenv.config();
 
 const RAZORPAY_KEY = process.env.Razorpay_Key || process.env.RAZORPAY_KEY_ID;
 const RAZORPAY_SECRET = process.env.Razorpay_Secret || process.env.RAZORPAY_SECRET;
 
-const REQUIRED_ENV_VARS = [
-  ["GROQ_API_KEY"],
-  ["GEMINI_API_KEY"],
-  ["Razorpay_Key", "RAZORPAY_KEY_ID"],
-  ["Razorpay_Secret", "RAZORPAY_SECRET"],
-];
+// Validate required environment variables
 const missingEnvVars = REQUIRED_ENV_VARS
   .filter((names) => !names.some((name) => process.env[name]))
   .map((names) => names.join(" or "));
@@ -41,14 +59,19 @@ import { razorpayWebhook } from "./controllers/course.js";
 app.post("/api/razorpay/webhook", express.raw({ type: "application/json" }), razorpayWebhook);
 
 // CORS configuration — reads from env for production, falls back to localhost for dev
-const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
+const allowedOrigins = (process.env.CORS_ORIGIN || DEFAULT_CORS_ORIGIN)
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Reject null origins explicitly (security risk)
+    if (!origin) {
+      return callback(new Error("Null origin not allowed"));
+    }
+    
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
       return;
     }
@@ -63,9 +86,9 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));                                   // Security headers
 app.use(compression());                              // Gzip compression
-app.use(express.json({ limit: "5mb" }));              // JSON body with size limit
+app.use(express.json({ limit: REQUEST_LIMITS.JSON_SIZE }));              // JSON body with size limit
 app.use(cors(corsOptions));
-app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: REQUEST_LIMITS.URL_ENCODED_SIZE }));
 
 // ─── Rate Limiting ──────────────────────────────────────────────
 app.use(globalLimiter);
@@ -73,170 +96,7 @@ app.use(globalLimiter);
 // AI request cache and request-dedupe store
 const cache = new Map();
 const inflight = new Map();
-const CACHE_TTL_MS = 10 * 60 * 1000;
-const testDomains = [
-  { name: "Ethical Hacking", id: "ethical-hacking" },
-  { name: "Backend Development", id: "backend" },
-  { name: "Node.js", id: "nodejs" },
-  { name: "React", id: "react" },
-  { name: "Python", id: "python" },
-  { name: "Data Science", id: "data-science" },
-  { name: "Machine Learning", id: "machine-learning" },
-  { name: "Cybersecurity", id: "cybersecurity" },
-  { name: "Frontend Development", id: "frontend" },
-  { name: "JavaScript", id: "javascript" },
-  { name: "Web Development", id: "web-dev" },
-  { name: "UI/UX Design", id: "ui-ux" },
-  { name: "Android Development", id: "android" },
-  { name: "iOS Development", id: "ios" },
-  { name: "Cloud Computing", id: "cloud" },
-  { name: "DevOps", id: "devops" },
-  { name: "Artificial Intelligence", id: "ai" },
-  { name: "Blockchain", id: "blockchain" },
-  { name: "Internet of Things (IoT)", id: "iot" },
-  { name: "Game Development", id: "game-dev" },
-  { name: "Software Testing", id: "software-testing" },
-  { name: "Database Management", id: "database" },
-  { name: "Networking", id: "networking" },
-  { name: "Linux", id: "linux" },
-  { name: "Windows", id: "windows" },
-  { name: "MacOS", id: "macos" },
-  { name: "Mobile Development", id: "mobile-dev" },
-  { name: "Web Design", id: "web-design" },
-  { name: "SEO", id: "seo" },
-  { name: "Digital Marketing", id: "digital-marketing" },
-  { name: "Content Writing", id: "content-writing" },
-  { name: "Graphic Design", id: "graphic-design" },
-  { name: "Video Editing", id: "video-editing" },
-  { name: "Photography", id: "photography" },
-  { name: "Animation", id: "animation" },
-  { name: "Music Production", id: "music-production" },
-  { name: "Film Making", id: "film-making" },
-  { name: "Business", id: "business" },
-  { name: "Finance", id: "finance" },
-  { name: "Accounting", id: "accounting" },
-  { name: "Sales", id: "sales" },
-  { name: "Marketing", id: "marketing" },
-  { name: "Human Resources (HR)", id: "hr" },
-  { name: "Project Management", id: "project-management" },
-  { name: "Product Management", id: "product-management" },
-  { name: "Customer Service", id: "customer-service" },
-];
 
-const RETRYABLE_OPENAI_STATUS = new Set([408, 409, 425, 429, 500, 502, 503, 504]);
-const GROQ_CHAT_COMPLETIONS_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GEMINI_CHAT_COMPLETIONS_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-const VALID_DIFFICULTIES = new Set(["easy", "medium", "hard"]);
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const logEvent = (level, event, meta = {}) => {
-  const line = JSON.stringify({
-    ts: new Date().toISOString(),
-    level,
-    event,
-    ...meta,
-  });
-  if (level === "error") {
-    console.error(line);
-    return;
-  }
-  console.log(line);
-};
-
-const stripCodeFences = (text = "") =>
-  String(text)
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
-
-const extractJSONArrayString = (text = "") => {
-  const clean = stripCodeFences(text);
-  const start = clean.indexOf("[");
-  const end = clean.lastIndexOf("]");
-  if (start === -1 || end === -1 || end <= start) return null;
-  return clean.slice(start, end + 1);
-};
-
-const extractJSONObjectString = (text = "") => {
-  const clean = stripCodeFences(text);
-  const start = clean.indexOf("{");
-  const end = clean.lastIndexOf("}");
-  if (start === -1 || end === -1 || end <= start) return null;
-  return clean.slice(start, end + 1);
-};
-
-async function repairJSONWithGroq(invalidJSON, shape = "array") {
-  const model = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
-  const prompt = `Fix this invalid JSON and return ONLY valid ${shape === "array" ? "JSON array" : "JSON object"}.
-Do not add comments or markdown.
-Invalid JSON:
-${invalidJSON}`;
-
-  const response = await requestAIWithRetry(
-    {
-      model,
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 4000,
-      temperature: 0,
-    },
-    1,
-    700
-  );
-
-  return response?.data?.choices?.[0]?.message?.content || "";
-}
-
-async function parseJSONArrayOrRepair(raw) {
-  const candidate = extractJSONArrayString(raw);
-  if (!candidate) throw new Error("AI response does not contain a JSON array");
-
-  try {
-    return JSON.parse(candidate);
-  } catch (error) {
-    const repaired = await repairJSONWithGroq(candidate, "array");
-    const repairedCandidate = extractJSONArrayString(repaired);
-    if (!repairedCandidate) throw new Error("Failed to repair AI JSON array");
-    return JSON.parse(repairedCandidate);
-  }
-}
-
-async function parseJSONObjectOrRepair(raw) {
-  const candidate = extractJSONObjectString(raw);
-  if (!candidate) {
-    console.error("AI response does not contain JSON object. Truncated Raw:", raw.slice(-100));
-    throw new Error("AI response does not contain a JSON object");
-  }
-
-  try {
-    return JSON.parse(candidate);
-  } catch (error) {
-    console.warn("Initial JSON parse failed, repairing. Candidate:", candidate);
-    const repaired = await repairJSONWithGroq(candidate, "object");
-    const repairedCandidate = extractJSONObjectString(repaired);
-    if (!repairedCandidate) throw new Error("Failed to repair AI JSON object");
-    return JSON.parse(repairedCandidate);
-  }
-}
-
-function isRetryableOpenAIError(error) {
-  if (!axios.isAxiosError(error)) return false;
-  const status = error.response?.status;
-  return !status || RETRYABLE_OPENAI_STATUS.has(status);
-}
-
-async function requestAIWithRetry(body, maxRetries = 3, baseDelayMs = 1000) {
-  let lastError;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
-    // Randomize primary provider for this attempt
-    const useGemini = Math.random() > 0.5;
-    const primaryConf = useGemini ? {
-      url: GEMINI_CHAT_COMPLETIONS_URL,
-      key: process.env.GEMINI_API_KEY,
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      name: "Gemini",
     } : {
       url: GROQ_CHAT_COMPLETIONS_URL,
       key: process.env.GROQ_API_KEY,
@@ -413,7 +273,11 @@ app.post("/api/generate-questions", aiLimiter, async (req, res) => {
       }`;
 
       if (!process.env.GROQ_API_KEY) {
-        throw new Error("GROQ_API_KEY is not configured");
+        // Return generic error in production, detailed only in development
+        const errorMsg = process.env.NODE_ENV === "production" 
+          ? "AI service temporarily unavailable" 
+          : "GROQ_API_KEY is not configured";
+        throw new Error(errorMsg);
       }
 
       const model = "llama-3.1-8b-instant"; // The load balancer overrides this
@@ -521,7 +385,11 @@ app.post("/api/analyze-test-performance", aiLimiter, async (req, res) => {
     }));
 
     if (!process.env.GROQ_API_KEY) {
-      throw new Error("GROQ_API_KEY is not configured");
+      // Return generic error in production, detailed only in development
+      const errorMsg = process.env.NODE_ENV === "production" 
+        ? "AI service temporarily unavailable" 
+        : "GROQ_API_KEY is not configured";
+      throw new Error(errorMsg);
     }
 
     const model = "llama-3.1-8b-instant";
