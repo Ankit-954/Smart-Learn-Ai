@@ -9,27 +9,21 @@ import { initCronJobs } from "./cron/jobs.js";
 import { globalLimiter, aiLimiter } from "./middlewares/rateLimiter.js";
 import {
   TEST_DOMAINS,
+  CACHE_TTL_MS,
   REQUIRED_ENV_VARS,
   DEFAULT_CORS_ORIGIN,
   REQUEST_LIMITS,
 } from "./constants/index.js";
 import { logEvent } from "./helpers/logger.js";
 import {
-  sleep,
-  stripCodeFences,
-  extractJSONArrayString,
-  extractJSONObjectString,
   parseJSONArrayOrRepair,
   parseJSONObjectOrRepair,
   requestAIWithRetry,
-  isRetryableOpenAIError,
 } from "./helpers/aiHelpers.js";
 import {
   normalizeDifficulty,
   shuffleArray,
   normalizeQuestionPayload,
-  validateQuestionCount,
-  validateDomain,
 } from "./helpers/validation.js";
 
 dotenv.config();
@@ -97,130 +91,13 @@ app.use(globalLimiter);
 const cache = new Map();
 const inflight = new Map();
 
-    } : {
-      url: GROQ_CHAT_COMPLETIONS_URL,
-      key: process.env.GROQ_API_KEY,
-      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
-      name: "Groq",
-    };
-    
-    // Fallback provider
-    const secondaryConf = useGemini ? {
-      url: GROQ_CHAT_COMPLETIONS_URL,
-      key: process.env.GROQ_API_KEY,
-      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
-      name: "Groq",
-    } : {
-      url: GEMINI_CHAT_COMPLETIONS_URL,
-      key: process.env.GEMINI_API_KEY,
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      name: "Gemini",
-    };
-
-    const attemptConfigs = [primaryConf, secondaryConf];
-    let requestFailed = true;
-
-    for (const conf of attemptConfigs) {
-      if (!conf.key) continue; // Skip if env key is missing for some reason
-      
-      try {
-        const payload = { ...body, model: conf.model }; // override model
-        const headers = {
-          Authorization: `Bearer ${conf.key}`,
-          "Content-Type": "application/json",
-        };
-        const response = await axios.post(conf.url, payload, { headers, timeout: 25000 });
-        return response; // Success, immediately exit
-      } catch (error) {
-        lastError = error;
-        console.warn(`${conf.name} API failed on try ${attempt + 1}: ${error.response?.status || error.message}`);
-        
-        // If it's a structural error (like 400 Bad Request) do not fallback to the other provider, throw immediately
-        if (error.response?.status === 400) {
-          throw error;
-        }
-      }
-    }
-
-    // Both providers failed or structural issue, calculate delay and retry
-    if (!isRetryableOpenAIError(lastError) || attempt === maxRetries) {
-      throw lastError;
-    }
-
-    const retryAfterHeader = Number(lastError?.response?.headers?.["retry-after"]);
-    const retryAfterMs =
-      Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
-        ? retryAfterHeader * 1000
-        : baseDelayMs * 2 ** attempt;
-
-    console.warn(`AI request retry ${attempt + 1}/${maxRetries} in ${retryAfterMs}ms`);
-    await sleep(retryAfterMs);
-  }
-
-  throw lastError;
-}
-
-function shuffleArray(list) {
-  const arr = [...list];
-  for (let i = arr.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-function normalizeDifficulty(value) {
-  const difficulty = String(value || "medium").toLowerCase();
-  return VALID_DIFFICULTIES.has(difficulty) ? difficulty : "medium";
-}
-
-function normalizeQuestionPayload(rawQuestions, requestedDifficulty) {
-  if (!Array.isArray(rawQuestions)) return [];
-
-  const seen = new Set();
-  const normalized = [];
-
-  for (const q of rawQuestions) {
-    const question = String(q?.question || "").trim();
-    const options = Array.isArray(q?.options)
-      ? q.options.map((opt) => String(opt).trim()).filter(Boolean)
-      : [];
-    const rawCorrectAnswer = String(q?.correctAnswer || "").trim();
-    let correctAnswer = rawCorrectAnswer;
-    const letterMatch = rawCorrectAnswer.match(/^[A-Ea-e]$/);
-    if (letterMatch) {
-      const idx = letterMatch[0].toUpperCase().charCodeAt(0) - 65;
-      if (options[idx]) correctAnswer = options[idx];
-    } else if (/^\d+$/.test(rawCorrectAnswer)) {
-      const idx = Number(rawCorrectAnswer) - 1;
-      if (options[idx]) correctAnswer = options[idx];
-    }
-    const difficulty = normalizeDifficulty(q?.difficulty || requestedDifficulty);
-    const topic = String(q?.topic || "General Concepts").trim();
-    const key = question.toLowerCase();
-
-    if (!question || options.length < 2 || !correctAnswer || seen.has(key)) continue;
-
-    seen.add(key);
-    normalized.push({
-      question,
-      options,
-      correctAnswer,
-      difficulty,
-      topic,
-    });
-  }
-
-  return normalized;
-}
-
 app.get("/", (req, res) => {
   res.send("Server is running...");
 });
 
 // ✅ Optimized API to Generate MCQs with Caching
 app.get("/api/domains", (req, res) => {
-  res.json({ success: true, domains: testDomains });
+  res.json({ success: true, domains: TEST_DOMAINS });
 });
 
 app.post("/api/generate-questions", aiLimiter, async (req, res) => {
